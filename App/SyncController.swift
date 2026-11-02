@@ -5,13 +5,10 @@ import WidgetKit
 
 /// Ustawienia, nocna synchronizacja i aktualna pula propozycji.
 ///
-/// Dane dostępowe (ciasteczko Filmwebu, klucz TMDB) leżą wyłącznie w ustawieniach aplikacji
-/// na tym Macu (kontener sandboxa) — nie ma ich w repozytorium ani w kontenerze widgetu.
+/// Klucze TMDB/OMDb leżą wyłącznie w ustawieniach aplikacji na tym Macu (kontener sandboxa),
+/// a sesja Filmwebu w magazynie WebKitu aplikacji — nie ma ich w repozytorium ani w widgecie.
 @MainActor
 final class SyncController: ObservableObject {
-    @Published var filmwebCookie: String {
-        didSet { defaults.set(filmwebCookie, forKey: Keys.cookie) }
-    }
     @Published var tmdbCredential: String {
         didSet { defaults.set(tmdbCredential, forKey: Keys.tmdb) }
     }
@@ -26,6 +23,9 @@ final class SyncController: ObservableObject {
     @Published private(set) var status = ""
     @Published private(set) var lastError: String?
     @Published private(set) var lastSync: Date?
+    /// Nazwa użytkownika Filmwebu albo `nil`, gdy nie jesteś zalogowany (lub jeszcze nie sprawdzono).
+    @Published private(set) var filmwebUser: String?
+    @Published private(set) var isCheckingFilmweb = false
     @Published private(set) var launchesAtLogin = SMAppService.mainApp.status == .enabled
 
     private let defaults = UserDefaults.standard
@@ -33,13 +33,12 @@ final class SyncController: ObservableObject {
     private var wakeObserver: NSObjectProtocol?
 
     private enum Keys {
-        static let cookie = "filmweb.cookie"
         static let tmdb = "tmdb.credential"
         static let omdb = "omdb.key"
     }
 
     init() {
-        filmwebCookie = defaults.string(forKey: Keys.cookie) ?? ""
+        defaults.removeObject(forKey: "filmweb.cookie") // stara wersja trzymała tu wklejone ciasteczko
         tmdbCredential = defaults.string(forKey: Keys.tmdb) ?? ""
         omdbKey = defaults.string(forKey: Keys.omdb) ?? ""
         snapshot = PicksStore.load()
@@ -56,12 +55,14 @@ final class SyncController: ObservableObject {
                 await self?.syncIfDue()
             }
         }
-        Task { await syncIfDue() }
+        Task {
+            await checkFilmweb()
+            await syncIfDue()
+        }
     }
 
     var isConfigured: Bool {
-        !filmwebCookie.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-            && !tmdbCredential.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        !tmdbCredential.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             && !services.isEmpty
     }
 
@@ -100,7 +101,7 @@ final class SyncController: ObservableObject {
     func sync() async {
         guard !isSyncing else { return }
         guard isConfigured else {
-            lastError = "Uzupełnij ciasteczko Filmwebu i klucz TMDB oraz dodaj link do co najmniej jednego serwisu VOD."
+            lastError = "Uzupełnij klucz TMDB i dodaj link do co najmniej jednego serwisu VOD."
             return
         }
         isSyncing = true
@@ -108,7 +109,7 @@ final class SyncController: ObservableObject {
         defer { isSyncing = false }
 
         let engine = RecommendationEngine(
-            filmweb: FilmwebClient(cookie: filmwebCookie.trimmingCharacters(in: .whitespacesAndNewlines)),
+            filmweb: FilmwebClient(),
             tmdb: TMDBClient(credential: tmdbCredential.trimmingCharacters(in: .whitespacesAndNewlines)),
             omdb: omdbKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
                 ? nil
@@ -134,18 +135,23 @@ final class SyncController: ObservableObject {
             library.save()
             status = ""
             lastError = error.localizedDescription
+            if case FilmwebSession.SessionError.notLoggedIn = error {
+                filmwebUser = nil
+            }
         }
     }
 
-    /// Sprawdza ciasteczko Filmwebu; zwraca nazwę użytkownika albo opis błędu.
-    func checkFilmweb() async -> String {
-        do {
-            let name = try await FilmwebClient(cookie: filmwebCookie.trimmingCharacters(in: .whitespacesAndNewlines))
-                .loggedUserName()
-            return "Połączono: \(name)"
-        } catch {
-            return error.localizedDescription
-        }
+    /// Sprawdza, czy sesja Filmwebu w aplikacji jest zalogowana.
+    func checkFilmweb() async {
+        isCheckingFilmweb = true
+        defer { isCheckingFilmweb = false }
+        try? await FilmwebSession.shared.refresh(force: true)
+        filmwebUser = await FilmwebSession.shared.loggedUserName()
+    }
+
+    func logOutOfFilmweb() async {
+        await FilmwebSession.shared.logOut()
+        filmwebUser = nil
     }
 
     private func scheduleMidnightSync() {

@@ -66,8 +66,9 @@ struct MenuBarPanel: View {
 
             HStack {
                 Button("Ustawienia", systemImage: "gearshape") {
-                    openWindow(id: MainWindow.id)
+                    // Najpierw aktywacja — inaczej okno aplikacji z paska menu nie dostaje klawiatury.
                     NSApp.activate()
+                    openWindow(id: MainWindow.id)
                 }
                 Spacer()
                 Button("Zakończ", systemImage: "power") {

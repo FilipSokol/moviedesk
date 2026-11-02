@@ -1,34 +1,40 @@
+import AppKit
 import SwiftUI
 
 /// Zakładka „Rekomendacje”: dane dostępowe, serwisy i synchronizacja.
 struct SettingsView: View {
     @EnvironmentObject private var sync: SyncController
     @EnvironmentObject private var links: LinksModel
-    @State private var filmwebCheck: String?
-    @State private var isChecking = false
+    @Environment(\.openWindow) private var openWindow
 
     var body: some View {
         Form {
             Section {
-                SecureField("Ciasteczko", text: $sync.filmwebCookie, prompt: Text("wklej wartość nagłówka Cookie"))
                 HStack {
-                    Button("Sprawdź połączenie") {
-                        isChecking = true
-                        Task {
-                            filmwebCheck = await sync.checkFilmweb()
-                            isChecking = false
-                        }
+                    if sync.isCheckingFilmweb {
+                        ProgressView().controlSize(.small)
+                        Text("Sprawdzam…").foregroundStyle(.secondary)
+                    } else if let user = sync.filmwebUser {
+                        Label("Zalogowano: \(user)", systemImage: "checkmark.circle.fill")
+                            .foregroundStyle(.green)
+                    } else {
+                        Label("Nie zalogowano", systemImage: "person.crop.circle.badge.exclamationmark")
+                            .foregroundStyle(.secondary)
                     }
-                    .disabled(sync.filmwebCookie.isEmpty || isChecking)
-                    if isChecking { ProgressView().controlSize(.small) }
-                    if let filmwebCheck {
-                        Text(filmwebCheck).foregroundStyle(.secondary)
+                    Spacer()
+                    if sync.filmwebUser == nil {
+                        Button("Zaloguj się…") {
+                            NSApp.activate()
+                            openWindow(id: FilmwebLoginView.windowID)
+                        }
+                    } else {
+                        Button("Wyloguj") { Task { await sync.logOutOfFilmweb() } }
                     }
                 }
             } header: {
                 Text("Filmweb")
             } footer: {
-                Text("Zaloguj się na filmweb.pl w przeglądarce, otwórz narzędzia deweloperskie (⌥⌘I) → Sieć, odśwież stronę, kliknij dowolne żądanie do filmweb.pl i skopiuj całą wartość nagłówka „Cookie”. Gdy sesja wygaśnie, wklej ją ponownie.")
+                Text("Logujesz się raz, w okienku Filmwebu w aplikacji. Sesja trwa, dopóki Filmweb Cię nie wyloguje — wtedy zobaczysz prośbę o ponowne zalogowanie.")
             }
 
             Section {

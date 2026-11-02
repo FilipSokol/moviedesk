@@ -14,6 +14,17 @@ struct QuickLink: Identifiable, Codable, Hashable {
         name.trimmingCharacters(in: .whitespaces).first.map { String($0).uppercased() } ?? "•"
     }
 
+    /// Nazwa podpowiadana z adresu: rozpoznany serwis albo domena bez „www” i końcówki,
+    /// np. „example.com” → „Example”.
+    static func suggestedName(for address: String) -> String {
+        guard let url = webURL(from: address), let host = url.host?.lowercased() else { return "" }
+        if let service = StreamingService.detect(in: url) { return service.displayName }
+        var parts = host.split(separator: ".").map(String.init)
+        if parts.count > 2, ["www", "m", "play", "app"].contains(parts[0]) { parts.removeFirst() }
+        let core = parts.count >= 2 ? parts[parts.count - 2] : (parts.first ?? host)
+        return core.prefix(1).uppercased() + core.dropFirst()
+    }
+
     /// Dopuszcza tylko http/https — widget nie może otwierać plików ani schematów innych aplikacji.
     /// Brakujący schemat uzupełnia jako https (np. "filmweb.pl").
     static func webURL(from raw: String) -> URL? {

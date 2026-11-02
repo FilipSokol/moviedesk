@@ -23,6 +23,13 @@ struct MovieDeskApp: App {
         .defaultSize(width: 640, height: 560)
         // Uruchomienie przez kliknięcie w widget nie powinno otwierać okna.
         .defaultLaunchBehavior(.suppressed)
+
+        Window("Logowanie do Filmwebu", id: FilmwebLoginView.windowID) {
+            FilmwebLoginView()
+                .environmentObject(sync)
+        }
+        .defaultSize(width: 520, height: 720)
+        .defaultLaunchBehavior(.suppressed)
     }
 }
 
