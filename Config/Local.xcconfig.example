@@ -1,3 +1,5 @@
-// Skopiuj jako Config/Local.xcconfig i wpisz swój Team ID
-// (Xcode → Settings → Accounts → Twój Apple ID → Team; 10 znaków).
+// Skopiuj jako Config/Local.xcconfig (plik jest w .gitignore) i wpisz swój Team ID.
 DEVELOPMENT_TEAM = ABCDE12345
+
+// Opcjonalnie własny prefiks identyfikatorów aplikacji.
+// BUNDLE_ID_PREFIX = com.twojprefiks

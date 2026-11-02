@@ -1,12 +1,12 @@
 name: MovieDesk
 
 options:
-  bundleIdPrefix: pl.filipsokol
   deploymentTarget:
     macOS: "26.0"
   createIntermediateGroups: true
 
-# DEVELOPMENT_TEAM i APP_GROUP_ID pochodzą z xcconfig (Config/Local.xcconfig nie jest w repo).
+# DEVELOPMENT_TEAM, BUNDLE_ID_PREFIX i APP_GROUP_ID pochodzą z xcconfig
+# (Config/Local.xcconfig jest lokalny i nie trafia do repo).
 configFiles:
   Debug: Config/Base.xcconfig
   Release: Config/Base.xcconfig
@@ -14,7 +14,7 @@ configFiles:
 settings:
   base:
     SWIFT_VERSION: "5.0"
-    MARKETING_VERSION: "0.1.0"
+    MARKETING_VERSION: "0.2.0"
     CURRENT_PROJECT_VERSION: "1"
     CODE_SIGN_STYLE: Automatic
     ENABLE_HARDENED_RUNTIME: YES
@@ -29,6 +29,7 @@ targets:
     dependencies:
       - target: MovieDeskWidget
       - sdk: WidgetKit.framework
+      - sdk: ServiceManagement.framework
     info:
       path: App/Info.plist
       properties:
@@ -37,18 +38,19 @@ targets:
         LSApplicationCategoryType: public.app-category.entertainment
         MDAppGroupID: "$(APP_GROUP_ID)"
         CFBundleURLTypes:
-          - CFBundleURLName: pl.filipsokol.moviedesk
+          - CFBundleURLName: "$(BUNDLE_ID_PREFIX).deeplink"
             CFBundleURLSchemes:
               - moviedesk
     entitlements:
       path: App/MovieDesk.entitlements
       properties:
         com.apple.security.app-sandbox: true
+        com.apple.security.network.client: true
         com.apple.security.application-groups:
           - "$(APP_GROUP_ID)"
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: pl.filipsokol.MovieDesk
+        PRODUCT_BUNDLE_IDENTIFIER: "$(BUNDLE_ID_PREFIX).MovieDesk"
 
   MovieDeskWidget:
     type: app-extension
@@ -74,5 +76,5 @@ targets:
           - "$(APP_GROUP_ID)"
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: pl.filipsokol.MovieDesk.Widget
+        PRODUCT_BUNDLE_IDENTIFIER: "$(BUNDLE_ID_PREFIX).MovieDesk.Widget"
         SKIP_INSTALL: YES

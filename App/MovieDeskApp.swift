@@ -4,22 +4,40 @@ import SwiftUI
 @main
 struct MovieDeskApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
-    @StateObject private var model = LinksModel()
+    @StateObject private var links = LinksModel()
+    @StateObject private var sync = SyncController()
 
     var body: some Scene {
         MenuBarExtra("MovieDesk", systemImage: "play.rectangle.on.rectangle") {
             MenuBarPanel()
-                .environmentObject(model)
+                .environmentObject(links)
+                .environmentObject(sync)
         }
         .menuBarExtraStyle(.window)
 
-        Window("Linki", id: LinksEditorView.windowID) {
-            LinksEditorView()
-                .environmentObject(model)
+        Window("MovieDesk", id: MainWindow.id) {
+            MainWindow()
+                .environmentObject(links)
+                .environmentObject(sync)
         }
-        .defaultSize(width: 640, height: 480)
+        .defaultSize(width: 640, height: 560)
         // Uruchomienie przez kliknięcie w widget nie powinno otwierać okna.
         .defaultLaunchBehavior(.suppressed)
+    }
+}
+
+/// Okno ustawień: rekomendacje i linki.
+struct MainWindow: View {
+    static let id = "main"
+
+    var body: some View {
+        TabView {
+            SettingsView()
+                .tabItem { Label("Rekomendacje", systemImage: "film") }
+            LinksEditorView()
+                .tabItem { Label("Linki", systemImage: "link") }
+        }
+        .frame(minWidth: 560, minHeight: 460)
     }
 }
 

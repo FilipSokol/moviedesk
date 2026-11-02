@@ -8,8 +8,11 @@ enum DeepLink {
     private static let host = "open"
 
     static func url(for link: QuickLink) -> URL? {
-        guard let target = link.url,
-              let encoded = target.absoluteString.addingPercentEncoding(withAllowedCharacters: .alphanumerics)
+        link.url.flatMap(url(for:))
+    }
+
+    static func url(for target: URL) -> URL? {
+        guard let encoded = target.absoluteString.addingPercentEncoding(withAllowedCharacters: .alphanumerics)
         else { return nil }
         var components = URLComponents()
         components.scheme = scheme

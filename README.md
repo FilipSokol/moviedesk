@@ -1,76 +1,92 @@
-# MovieDesk — widget „Szybkie linki”
+# MovieDesk
 
-Minimalistyczny widget na pulpit macOS w stylu Liquid Glass. Każdy kafelek otwiera
-stronę w domyślnej przeglądarce. Listę linków edytujesz w małej aplikacji w pasku menu.
+Widget na pulpit macOS w stylu Liquid Glass: trzy filmy na dziś dobrane do Twoich ocen
+z Filmwebu i dostępne w Twoich serwisach, do tego małe skróty do stron.
 
-- **Widget**: rozmiary mały (4 linki), średni (8), duży (16). W trybie pełnokolorowym
-  kafelki mają delikatny tint i szklaną krawędź; w trybach przezroczystym i tintowanym
-  macOS podkłada własne szkło, a inicjały przejmują kolor akcentu.
-- **Pasek menu**: ikona ▶︎ otwiera panel z tymi samymi linkami (natywny `glassEffect`)
-  oraz przycisk „Edytuj linki”.
-- **Edytor**: nazwa, adres (`filmweb.pl` wystarczy, `https://` dopisze się samo), kolor,
-  kolejność przeciąganiem. Zmiany trafiają do widgetu od razu.
+- **Widget** (średni i duży): trzy plakaty z tytułami, skróty do serwisów i przycisk ↻.
+  Przycisk pokazuje kolejną trójkę — plakaty przesuwają się z prawej z lekkim
+  opóźnieniem między kolumnami, a strzałka robi pełny obrót. Kliknięcie plakatu otwiera
+  wyszukiwanie filmu w serwisie, w którym jest dostępny.
+- **Pasek menu**: ikona ▶︎ otwiera panel z tymi samymi filmami i wszystkimi skrótami.
+- **Ustawienia** (z panelu): zakładki „Rekomendacje” i „Linki”.
+
+## Skąd biorą się propozycje
+
+Codziennie o północy (albo zaraz po wybudzeniu Maca) aplikacja:
+
+1. pobiera Twoje oceny filmów z Filmwebu,
+2. dopasowuje je do TMDB (po tytule oryginalnym i roku),
+3. bierze losowe 40 filmów ocenionych na 8+ i zbiera dla nich rekomendacje TMDB,
+   pomija wszystko, co już oceniłeś, i układa ranking (wyżej: wyższa Twoja ocena
+   filmu-źródła, więcej źródeł wskazujących ten sam film),
+4. osobno wybiera filmy ocenione na 8+ ponad 5 lat temu — do obejrzenia ponownie,
+5. zostawia tylko filmy dostępne w abonamencie wybranych serwisów w Polsce
+   (TMDB `watch/providers`, dane JustWatch),
+6. zapisuje pulę ~30 filmów (dwa nowe, jeden do powtórki, i tak dalej) oraz plakaty
+   do kontenera App Group, z którego czyta widget.
+
+Pierwsza synchronizacja trwa kilka minut (pobiera wszystkie oceny i tytuły), kolejne
+pobierają tylko nowości. Lokalna pamięć podręczna leży w kontenerze aplikacji
+(`Application Support/MovieDesk/library.json`).
+
+Filmweb nie ma publicznego API — aplikacja korzysta z tego samego API, którego używa
+strona filmweb.pl, z ciasteczkiem Twojej zalogowanej sesji. Jeśli Filmweb coś zmieni,
+synchronizacja pokaże błąd w ustawieniach.
 
 ## Wymagania
 
 - macOS 26 (Tahoe) lub nowszy, Xcode 26+
-- [XcodeGen](https://github.com/yonaskolb/XcodeGen)
+- [XcodeGen](https://github.com/yonaskolb/XcodeGen): `brew install xcodegen`
+- darmowy klucz API TMDB: themoviedb.org → Ustawienia → API
 
 ## Uruchomienie
 
-1. Zainstaluj XcodeGen:
-
-   ```bash
-   brew install xcodegen
-   ```
-
-2. Wpisz swój Team ID (Xcode → Settings → Accounts; darmowe konto Apple ID też działa):
+1. Utwórz lokalną konfigurację i wpisz w niej swój Team ID:
 
    ```bash
    cp Config/Local.xcconfig.example Config/Local.xcconfig
    ```
 
-   i podmień `ABCDE12345` na swój identyfikator. Bez tego App Group nie zadziała
-   i widget nie zobaczy Twoich linków.
-
-3. Wygeneruj projekt i otwórz go:
+2. Wygeneruj projekt i otwórz go w Xcode:
 
    ```bash
-   xcodegen && open MovieDesk.xcodeproj
+   xcodegen && open -a Xcode MovieDesk.xcodeproj
    ```
 
-4. Uruchom schemat **MovieDesk** (⌘R). W pasku menu pojawi się ikona aplikacji.
-5. Dodaj widget: prawy klik na pulpicie → **Edytuj widżety…** → wyszukaj „MovieDesk”.
+3. Uruchom schemat **MovieDesk** (⌘R). W pasku menu pojawi się ikona ▶︎.
+4. Panel → **Ustawienia** → **Rekomendacje**: wklej ciasteczko Filmwebu i klucz TMDB,
+   zaznacz serwisy, kliknij **Synchronizuj teraz**. Włącz **Uruchamiaj przy logowaniu**,
+   żeby nocna synchronizacja działała bez pamiętania o aplikacji.
+5. Dodaj widget: prawy klik na pulpicie → **Edytuj widżety…** → „MovieDesk”.
 
-Po zmianie `project.yml` uruchom `xcodegen` ponownie. Plik `.xcodeproj`, `Info.plist`
-i `.entitlements` są generowane i nie trafiają do repo.
+## Linki
+
+Panel → **Ustawienia** → **Linki** → **Dodaj link**, wpisz nazwę i adres
+(wystarczy `example.com`). Kolejność zmieniasz przeciąganiem wierszy. Średni widget
+pokazuje 4 pierwsze linki, duży 8, panel w pasku menu wszystkie.
+
+## Prywatność
+
+W repozytorium nie ma żadnych danych osobistych. Team ID i ewentualny własny prefiks
+bundle ID są w `Config/Local.xcconfig` (w `.gitignore`). Ciasteczko Filmwebu i klucz TMDB
+wpisujesz w aplikacji — zostają w jej ustawieniach na Twoim Macu.
 
 ## Jak to działa
 
 ```
-Widget (WidgetKit)                    MovieDesk.app (pasek menu, bez ikony w Docku)
-  czyta listę z App Group     ◀──────   zapisuje listę do App Group + reloadTimelines
-  kafelek = Link(moviedesk://open?url=…)
-                        └─────────────▶  AppDelegate (kAEGetURL) → NSWorkspace.open(url)
-                                          → domyślna przeglądarka
+MovieDesk.app (pasek menu)                       Widget (WidgetKit)
+  o północy: Filmweb → TMDB → ranking              czyta pulę i plakaty z App Group
+  zapis puli + plakatów do App Group   ────────▶   pokazuje 3 filmy (kursor w App Group)
+  reloadTimelines                                   ↻ = App Intent: kursor += 3
+  moviedesk://open?url=… → przeglądarka ◀──────    kliknięcie plakatu lub skrótu
 ```
-
-- Widget nie ma dostępu do sieci i nie odświeża się sam (`policy: .never`) — przeładowuje
-  go aplikacja po każdej zmianie listy.
-- Kliknięcie idzie przez własny schemat `moviedesk://`, więc działa przewidywalnie
-  niezależnie od tego, jak system obsługuje linki http(s) w widgetach. Gdy aplikacja nie
-  jest uruchomiona, system ją wystartuje (bez otwierania okna) i przekaże adres.
-- Otwierane są wyłącznie adresy `http`/`https`.
-
-Wskazówka: dodaj MovieDesk do **Ustawienia systemowe → Ogólne → Rzeczy otwierane
-podczas logowania**, żeby pierwsze kliknięcie w widget nie czekało na start aplikacji.
 
 ## Struktura
 
 ```
 project.yml            definicja projektu (XcodeGen)
-Config/                xcconfig: Team ID i App Group
-Shared/                model linku, zapis w App Group, deep link, ikona-inicjał
+Config/                xcconfig: Team ID, prefiks bundle ID, App Group
+Shared/                modele, App Group, widoki plakatów i ikon, intencja ↻
 Widget/                rozszerzenie WidgetKit
-App/                   aplikacja w pasku menu + edytor
+App/                   pasek menu, ustawienia, Filmweb, TMDB, silnik rekomendacji
 ```

@@ -1,33 +1,66 @@
 import AppKit
 import SwiftUI
 
-/// Popover z ikony w pasku menu: te same kafelki co w widgecie, ale w prawdziwym Liquid Glass.
+/// Popover z ikony w pasku menu: trzy filmy na dziś, małe skróty i przyciski.
 struct MenuBarPanel: View {
-    @EnvironmentObject private var model: LinksModel
+    @EnvironmentObject private var links: LinksModel
+    @EnvironmentObject private var sync: SyncController
     @Environment(\.openWindow) private var openWindow
 
-    private let columns = Array(repeating: GridItem(.flexible(), spacing: 10), count: 4)
-
     var body: some View {
-        VStack(spacing: 14) {
-            if model.links.isEmpty {
-                Text("Brak linków — dodaj pierwszy w edytorze.")
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, minHeight: 80)
+        VStack(alignment: .leading, spacing: 14) {
+            HStack {
+                Text("Na dziś")
+                    .font(.system(size: 15, weight: .semibold, design: .rounded))
+                Spacer()
+                if sync.isSyncing {
+                    ProgressView().controlSize(.small)
+                }
+                Button {
+                    sync.showNext()
+                } label: {
+                    ShuffleGlyph(cursor: sync.cursor, size: 28)
+                }
+                .buttonStyle(.plain)
+                .disabled(sync.snapshot.picks.isEmpty)
+                .help("Pokaż kolejne filmy")
+            }
+
+            if sync.snapshot.picks.isEmpty {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(sync.isConfigured ? "Propozycje pojawią się po pierwszej synchronizacji." : "Uzupełnij Filmweb i TMDB w ustawieniach.")
+                    if let error = sync.lastError {
+                        Text(error).foregroundStyle(.red)
+                    } else if !sync.status.isEmpty {
+                        Text(sync.status).foregroundStyle(.secondary)
+                    }
+                }
+                .font(.callout)
+                .frame(maxWidth: .infinity, minHeight: 120, alignment: .leading)
             } else {
-                GlassEffectContainer(spacing: 10) {
-                    LazyVGrid(columns: columns, spacing: 10) {
-                        ForEach(model.links) { link in
-                            PanelTile(link: link)
+                PicksRow(picks: sync.currentPicks, cursor: sync.cursor, destination: { $0.openURL }, titleSize: 11)
+            }
+
+            GlassEffectContainer(spacing: 8) {
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 34), spacing: 8)], alignment: .leading, spacing: 8) {
+                    ForEach(links.links) { link in
+                        Button {
+                            if let url = link.url { NSWorkspace.shared.open(url) }
+                        } label: {
+                            LinkGlyph(link: link, size: 26)
+                                .padding(4)
                         }
+                        .buttonStyle(.plain)
+                        .glassEffect(.regular.interactive(), in: Circle())
+                        .disabled(link.url == nil)
+                        .help(link.name)
                     }
                 }
             }
 
             HStack {
-                Button("Edytuj linki", systemImage: "slider.horizontal.3") {
-                    openWindow(id: LinksEditorView.windowID)
+                Button("Ustawienia", systemImage: "gearshape") {
+                    openWindow(id: MainWindow.id)
                     NSApp.activate()
                 }
                 Spacer()
@@ -38,36 +71,8 @@ struct MenuBarPanel: View {
             .buttonStyle(.glass)
             .controlSize(.small)
         }
-        .padding(14)
-        .frame(width: 360)
-    }
-}
-
-private struct PanelTile: View {
-    let link: QuickLink
-
-    var body: some View {
-        Button {
-            if let url = link.url { NSWorkspace.shared.open(url) }
-        } label: {
-            VStack(spacing: 6) {
-                LinkGlyph(link: link, size: 34)
-                Text(link.name)
-                    .font(.system(size: 10.5, weight: .medium, design: .rounded))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.75)
-            }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 10)
-            .padding(.horizontal, 4)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .glassEffect(
-            .regular.tint(link.tint.color.opacity(0.2)).interactive(),
-            in: RoundedRectangle(cornerRadius: 14, style: .continuous)
-        )
-        .disabled(link.url == nil)
-        .help(link.url?.absoluteString ?? "Niepoprawny adres")
+        .padding(16)
+        .frame(width: 340)
+        .onAppear { sync.reloadFromStore() }
     }
 }

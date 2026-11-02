@@ -52,15 +52,11 @@ enum LinkTint: String, Codable, CaseIterable, Identifiable {
 }
 
 extension QuickLink {
-    /// Startowy zestaw — kolejność ma znaczenie: mały widget pokazuje pierwsze 4.
+    /// Startowy zestaw. Kolejne linki dodaje się w aplikacji (zakładka „Linki”).
     static let defaults: [QuickLink] = [
-        QuickLink(name: "Filmweb", address: "https://www.filmweb.pl", tint: .yellow),
         QuickLink(name: "Netflix", address: "https://www.netflix.com", tint: .red),
-        QuickLink(name: "HBO Max", address: "https://www.hbomax.com", tint: .indigo),
-        QuickLink(name: "Disney+", address: "https://www.disneyplus.com", tint: .blue),
+        QuickLink(name: "HBO Max", address: "https://play.hbomax.com", tint: .indigo),
         QuickLink(name: "Prime Video", address: "https://www.primevideo.com", tint: .cyan),
-        QuickLink(name: "SkyShowtime", address: "https://www.skyshowtime.com", tint: .purple),
-        QuickLink(name: "Player", address: "https://player.pl", tint: .green),
-        QuickLink(name: "YouTube", address: "https://www.youtube.com", tint: .orange),
+        QuickLink(name: "Disney+", address: "https://www.disneyplus.com", tint: .blue),
     ]
 }

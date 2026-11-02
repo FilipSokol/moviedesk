@@ -12,7 +12,7 @@ enum AppGroup {
 
 /// Zapis listy linków. Aplikacja pisze, widget tylko czyta.
 enum LinkStore {
-    private static let key = "quickLinks.v1"
+    private static let key = "quickLinks.v2"
 
     static func load() -> [QuickLink] {
         guard let data = AppGroup.defaults.data(forKey: key),

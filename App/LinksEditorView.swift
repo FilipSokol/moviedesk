@@ -1,9 +1,7 @@
 import SwiftUI
 
-/// Edytor listy linków. Kolejność = kolejność kafelków w widgecie.
+/// Edytor listy linków. Kolejność = kolejność skrótów w widgecie.
 struct LinksEditorView: View {
-    static let windowID = "links-editor"
-
     @EnvironmentObject private var model: LinksModel
 
     var body: some View {
@@ -19,20 +17,18 @@ struct LinksEditorView: View {
             Divider()
 
             HStack(alignment: .firstTextBaseline) {
-                Text("Mały widget pokazuje 4 pierwsze linki, średni 8, duży 16. Przeciągnij wiersz, aby zmienić kolejność.")
+                Text("Średni widget pokazuje 4 pierwsze linki, duży 8, panel w pasku menu wszystkie. Przeciągnij wiersz, aby zmienić kolejność.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
                 Spacer(minLength: 16)
                 Button("Przywróć domyślne") { model.resetToDefaults() }
                     .controlSize(.small)
+                Button("Dodaj link", systemImage: "plus") { model.add() }
+                    .controlSize(.small)
+                    .buttonStyle(.borderedProminent)
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 10)
-        }
-        .toolbar {
-            ToolbarItem {
-                Button("Dodaj link", systemImage: "plus") { model.add() }
-            }
         }
         .frame(minWidth: 560, minHeight: 380)
     }
