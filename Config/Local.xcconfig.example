@@ -1,0 +1,3 @@
+// Skopiuj jako Config/Local.xcconfig i wpisz swój Team ID
+// (Xcode → Settings → Accounts → Twój Apple ID → Team; 10 znaków).
+DEVELOPMENT_TEAM = ABCDE12345

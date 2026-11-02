@@ -1,0 +1,15 @@
+# Generowane przez XcodeGen z project.yml
+*.xcodeproj
+App/Info.plist
+App/*.entitlements
+Widget/Info.plist
+Widget/*.entitlements
+
+# Lokalne ustawienia podpisywania
+Config/Local.xcconfig
+
+# Xcode / macOS
+DerivedData/
+build/
+xcuserdata/
+.DS_Store

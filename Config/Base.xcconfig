@@ -1,0 +1,9 @@
+// Wspólna konfiguracja. Swój Team ID wpisz w Config/Local.xcconfig
+// (skopiuj Local.xcconfig.example) — ten plik nie trafia do repo.
+
+DEVELOPMENT_TEAM =
+
+#include? "Local.xcconfig"
+
+// Na macOS identyfikator App Group musi zaczynać się od Team ID.
+APP_GROUP_ID = $(DEVELOPMENT_TEAM).pl.filipsokol.moviedesk

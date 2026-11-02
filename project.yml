@@ -1,0 +1,78 @@
+name: MovieDesk
+
+options:
+  bundleIdPrefix: pl.filipsokol
+  deploymentTarget:
+    macOS: "26.0"
+  createIntermediateGroups: true
+
+# DEVELOPMENT_TEAM i APP_GROUP_ID pochodzą z xcconfig (Config/Local.xcconfig nie jest w repo).
+configFiles:
+  Debug: Config/Base.xcconfig
+  Release: Config/Base.xcconfig
+
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    CODE_SIGN_STYLE: Automatic
+    ENABLE_HARDENED_RUNTIME: YES
+
+targets:
+  MovieDesk:
+    type: application
+    platform: macOS
+    sources:
+      - App
+      - Shared
+    dependencies:
+      - target: MovieDeskWidget
+      - sdk: WidgetKit.framework
+    info:
+      path: App/Info.plist
+      properties:
+        CFBundleDisplayName: MovieDesk
+        LSUIElement: true
+        LSApplicationCategoryType: public.app-category.entertainment
+        MDAppGroupID: "$(APP_GROUP_ID)"
+        CFBundleURLTypes:
+          - CFBundleURLName: pl.filipsokol.moviedesk
+            CFBundleURLSchemes:
+              - moviedesk
+    entitlements:
+      path: App/MovieDesk.entitlements
+      properties:
+        com.apple.security.app-sandbox: true
+        com.apple.security.application-groups:
+          - "$(APP_GROUP_ID)"
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: pl.filipsokol.MovieDesk
+
+  MovieDeskWidget:
+    type: app-extension
+    platform: macOS
+    sources:
+      - Widget
+      - Shared
+    dependencies:
+      - sdk: WidgetKit.framework
+      - sdk: SwiftUI.framework
+    info:
+      path: Widget/Info.plist
+      properties:
+        CFBundleDisplayName: MovieDesk
+        MDAppGroupID: "$(APP_GROUP_ID)"
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    entitlements:
+      path: Widget/MovieDeskWidget.entitlements
+      properties:
+        com.apple.security.app-sandbox: true
+        com.apple.security.application-groups:
+          - "$(APP_GROUP_ID)"
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: pl.filipsokol.MovieDesk.Widget
+        SKIP_INSTALL: YES
