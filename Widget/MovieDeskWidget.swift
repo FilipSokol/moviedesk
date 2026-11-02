@@ -51,7 +51,7 @@ struct MovieDeskWidget: Widget {
                 .containerBackground(for: .widget) { WidgetBackdrop() }
         }
         .configurationDisplayName("MovieDesk")
-        .description("Trzy filmy na dziś i skróty do serwisów.")
+        .description("Trzy tytuły na dziś w Twoim guście i skróty do serwisów.")
         .supportedFamilies([.systemMedium, .systemLarge])
         .contentMarginsDisabled()
     }
@@ -130,7 +130,7 @@ private struct PicksArea: View {
                 Image(systemName: "film.stack")
                     .font(.system(size: 22, weight: .medium))
                     .widgetAccentable()
-                Text("Uzupełnij Filmweb i TMDB\nw ustawieniach MovieDesk")
+                Text("Propozycje pojawią się\npo synchronizacji w MovieDesk")
                     .font(.system(size: 11, weight: .medium, design: .rounded))
                     .multilineTextAlignment(.center)
                     .foregroundStyle(.secondary)
@@ -203,11 +203,14 @@ struct WidgetBackdrop: View {
 extension Pick {
     /// Przykładowe dane do podglądu w galerii widżetów (bez plakatów).
     static let samples: [Pick] = [
-        Pick(id: 1, title: "Diuna", service: .hboMax, openURL: URL(string: "https://play.hbomax.com")!, kind: .discovery),
-        Pick(id: 2, title: "Incepcja", service: .netflix, openURL: URL(string: "https://www.netflix.com")!, kind: .rewatch),
-        Pick(id: 3, title: "Arrival", service: .primeVideo, openURL: URL(string: "https://www.primevideo.com")!, kind: .discovery),
+        Pick(tmdbID: 1, media: .film, title: "Diuna", overview: nil, rating: Rating(value: 7.9, source: .imdb),
+             service: .hboMax, openURL: URL(string: "https://play.hbomax.com")!, kind: .discovery, posterFile: nil),
+        Pick(tmdbID: 2, media: .film, title: "Incepcja", overview: nil, rating: Rating(value: 8.3, source: .filmweb),
+             service: .netflix, openURL: URL(string: "https://www.netflix.com")!, kind: .rewatch, posterFile: nil),
+        Pick(tmdbID: 3, media: .serial, title: "Severance", overview: nil, rating: Rating(value: 8.7, source: .imdb),
+             service: .appleTV, openURL: URL(string: "https://tv.apple.com")!, kind: .wanted, posterFile: nil),
     ]
-}
+
 
 #Preview("Średni", as: .systemMedium) {
     MovieDeskWidget()

@@ -59,6 +59,13 @@ private struct LinkRow: View {
                 .foregroundStyle(addressIsInvalid ? Color.red : Color.secondary)
                 .help(addressIsInvalid ? "Obsługiwane są tylko adresy http(s)" : "")
 
+            if let service = link.url.flatMap(StreamingService.detect(in:)) {
+                Text("VOD")
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                    .help("Rozpoznano \(service.displayName) — propozycje uwzględniają ten serwis")
+            }
+
             TintPicker(selection: $link.tint)
 
             Button(role: .destructive, action: onDelete) {

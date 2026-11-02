@@ -3,6 +3,7 @@ import SwiftUI
 /// Zakładka „Rekomendacje”: dane dostępowe, serwisy i synchronizacja.
 struct SettingsView: View {
     @EnvironmentObject private var sync: SyncController
+    @EnvironmentObject private var links: LinksModel
     @State private var filmwebCheck: String?
     @State private var isChecking = false
 
@@ -38,15 +39,26 @@ struct SettingsView: View {
                 Text("Darmowy klucz: themoviedb.org → Ustawienia → API. Z TMDB pochodzą plakaty, podobne filmy i dostępność w serwisach w Polsce (dane JustWatch).")
             }
 
-            Section("Serwisy") {
-                ForEach(StreamingService.allCases) { service in
-                    Toggle(service.displayName, isOn: Binding(
-                        get: { sync.services.contains(service) },
-                        set: { isOn in
-                            if isOn { sync.services.insert(service) } else { sync.services.remove(service) }
-                        }
-                    ))
+            Section {
+                SecureField("Klucz OMDb", text: $sync.omdbKey, prompt: Text("opcjonalnie"))
+            } header: {
+                Text("Oceny IMDb")
+            } footer: {
+                Text("Bez klucza nowe tytuły pokazują ocenę TMDB. Darmowy klucz: omdbapi.com → API Key. Tytuły z Twojej listy i do powtórki mają zawsze ocenę z Filmwebu.")
+            }
+
+            Section {
+                let detected = StreamingService.detected(in: links.links)
+                if detected.isEmpty {
+                    Text("Brak — dodaj link do serwisu VOD w zakładce „Linki”.")
+                        .foregroundStyle(.secondary)
+                } else {
+                    Text(detected.map(\.displayName).joined(separator: " · "))
                 }
+            } header: {
+                Text("Twoje serwisy")
+            } footer: {
+                Text("Rozpoznawane po linkach: \(StreamingService.allCases.map(\.displayName).joined(separator: ", ")). Pozostałe linki są zwykłymi skrótami. Po zmianie serwisów kliknij „Synchronizuj teraz”.")
             }
 
             Section {

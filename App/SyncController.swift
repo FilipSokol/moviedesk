@@ -15,8 +15,9 @@ final class SyncController: ObservableObject {
     @Published var tmdbCredential: String {
         didSet { defaults.set(tmdbCredential, forKey: Keys.tmdb) }
     }
-    @Published var services: Set<StreamingService> {
-        didSet { defaults.set(services.map(\.rawValue), forKey: Keys.services) }
+    /// Opcjonalnie — tylko po oceny IMDb.
+    @Published var omdbKey: String {
+        didSet { defaults.set(omdbKey, forKey: Keys.omdb) }
     }
 
     @Published private(set) var snapshot: PicksSnapshot
@@ -34,14 +35,13 @@ final class SyncController: ObservableObject {
     private enum Keys {
         static let cookie = "filmweb.cookie"
         static let tmdb = "tmdb.credential"
-        static let services = "streaming.services"
+        static let omdb = "omdb.key"
     }
 
     init() {
         filmwebCookie = defaults.string(forKey: Keys.cookie) ?? ""
         tmdbCredential = defaults.string(forKey: Keys.tmdb) ?? ""
-        let stored = (defaults.stringArray(forKey: Keys.services) ?? []).compactMap(StreamingService.init(rawValue:))
-        services = stored.isEmpty ? Set(StreamingService.allCases) : Set(stored)
+        omdbKey = defaults.string(forKey: Keys.omdb) ?? ""
         snapshot = PicksStore.load()
         cursor = PicksStore.cursor
         lastSync = Library.load().lastSync
@@ -63,6 +63,11 @@ final class SyncController: ObservableObject {
         !filmwebCookie.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             && !tmdbCredential.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             && !services.isEmpty
+    }
+
+    /// Serwisy VOD rozpoznane w Twoich linkach — tylko z nich pokazujemy propozycje.
+    var services: [StreamingService] {
+        StreamingService.detected(in: LinkStore.load())
     }
 
     var currentPicks: [Pick] {
@@ -95,7 +100,7 @@ final class SyncController: ObservableObject {
     func sync() async {
         guard !isSyncing else { return }
         guard isConfigured else {
-            lastError = "Uzupełnij ciasteczko Filmwebu, klucz TMDB i wybierz co najmniej jeden serwis."
+            lastError = "Uzupełnij ciasteczko Filmwebu i klucz TMDB oraz dodaj link do co najmniej jednego serwisu VOD."
             return
         }
         isSyncing = true
@@ -105,7 +110,10 @@ final class SyncController: ObservableObject {
         let engine = RecommendationEngine(
             filmweb: FilmwebClient(cookie: filmwebCookie.trimmingCharacters(in: .whitespacesAndNewlines)),
             tmdb: TMDBClient(credential: tmdbCredential.trimmingCharacters(in: .whitespacesAndNewlines)),
-            services: StreamingService.allCases.filter(services.contains),
+            omdb: omdbKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                ? nil
+                : OMDbClient(apiKey: omdbKey.trimmingCharacters(in: .whitespacesAndNewlines)),
+            services: services,
             progress: { [weak self] text in
                 await MainActor.run { self?.status = text }
             }

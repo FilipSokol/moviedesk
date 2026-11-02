@@ -38,7 +38,13 @@ struct MenuBarPanel: View {
                 .font(.callout)
                 .frame(maxWidth: .infinity, minHeight: 120, alignment: .leading)
             } else {
-                PicksRow(picks: sync.currentPicks, cursor: sync.cursor, destination: { $0.openURL }, titleSize: 11)
+                PicksRow(
+                    picks: sync.currentPicks,
+                    cursor: sync.cursor,
+                    destination: { $0.openURL },
+                    titleSize: 11,
+                    showsDetailsOnHover: true
+                )
             }
 
             GlassEffectContainer(spacing: 8) {

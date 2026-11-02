@@ -1,15 +1,33 @@
 import Foundation
 
-struct TMDBMovie: Decodable, Hashable, Sendable {
+/// Film albo serial z TMDB (pola filmów i seriali mają różne nazwy).
+struct TMDBTitle: Decodable, Hashable, Sendable {
+    struct Genre: Decodable, Hashable, Sendable { let id: Int }
+
     let id: Int
-    let title: String
-    let originalTitle: String?
+    let title: String?
+    let name: String?
     let releaseDate: String?
+    let firstAirDate: String?
     let posterPath: String?
+    let overview: String?
     let voteAverage: Double?
     let voteCount: Int?
+    /// W wynikach list…
+    let genreIds: [Int]?
+    /// …a w szczegółach.
+    let genres: [Genre]?
 
-    var year: Int? { releaseDate.flatMap { Int($0.prefix(4)) } }
+    var displayTitle: String { title ?? name ?? "" }
+    var year: Int? { (releaseDate ?? firstAirDate).flatMap { Int($0.prefix(4)) } }
+    var genreIDs: [Int] { genreIds ?? genres?.map(\.id) ?? [] }
+}
+
+struct WatchProviders: Sendable {
+    /// Nazwy serwisów abonamentowych w Polsce.
+    let names: [String]
+    /// Strona TMDB „gdzie obejrzeć” (dane JustWatch) — zapasowy link.
+    let link: URL?
 }
 
 /// Klient TMDB. Przyjmuje klucz API (v3) albo token odczytu (v4) — rozpoznaje po długości.
@@ -19,29 +37,39 @@ struct TMDBClient: Sendable {
     private static let base = "https://api.themoviedb.org/3/"
     private var usesBearer: Bool { credential.count > 40 }
 
-    func searchMovie(_ query: String) async throws -> [TMDBMovie] {
-        try await page("search/movie", ["query": query])
+    func search(_ media: MediaKind, _ query: String) async throws -> [TMDBTitle] {
+        try await results("search/\(media.tmdbPath)", ["query": query])
     }
 
-    func movie(_ id: Int) async throws -> TMDBMovie {
-        try await get("movie/\(id)", [:])
+    func details(_ media: MediaKind, _ id: Int) async throws -> TMDBTitle {
+        try await get("\(media.tmdbPath)/\(id)", [:])
     }
 
-    func recommendations(for id: Int) async throws -> [TMDBMovie] {
-        try await page("movie/\(id)/recommendations", [:])
+    func recommendations(_ media: MediaKind, _ id: Int) async throws -> [TMDBTitle] {
+        try await results("\(media.tmdbPath)/\(id)/recommendations", [:])
     }
 
-    /// Nazwy serwisów abonamentowych (flatrate), na których film jest dostępny w Polsce.
-    func providersPL(for id: Int) async throws -> [String] {
+    func providersPL(_ media: MediaKind, _ id: Int) async throws -> WatchProviders {
         struct Response: Decodable {
             struct Region: Decodable {
                 struct Provider: Decodable { let providerName: String }
+                let link: String?
                 let flatrate: [Provider]?
             }
             let results: [String: Region]
         }
-        let response: Response = try await get("movie/\(id)/watch/providers", [:])
-        return response.results["PL"]?.flatrate?.map(\.providerName) ?? []
+        let response: Response = try await get("\(media.tmdbPath)/\(id)/watch/providers", [:])
+        let region = response.results["PL"]
+        return WatchProviders(
+            names: region?.flatrate?.map(\.providerName) ?? [],
+            link: region?.link.flatMap(URL.init(string:))
+        )
+    }
+
+    func imdbID(_ media: MediaKind, _ id: Int) async throws -> String? {
+        struct Response: Decodable { let imdbId: String? }
+        let response: Response = try await get("\(media.tmdbPath)/\(id)/external_ids", [:])
+        return response.imdbId
     }
 
     func poster(_ path: String) async throws -> Data {
@@ -51,9 +79,9 @@ struct TMDBClient: Sendable {
 
     // MARK: - Plumbing
 
-    private struct Page: Decodable { let results: [TMDBMovie] }
+    private struct Page: Decodable { let results: [TMDBTitle] }
 
-    private func page(_ path: String, _ query: [String: String]) async throws -> [TMDBMovie] {
+    private func results(_ path: String, _ query: [String: String]) async throws -> [TMDBTitle] {
         let page: Page = try await get(path, query)
         return page.results
     }
@@ -73,5 +101,20 @@ struct TMDBClient: Sendable {
         let decoder = JSONDecoder()
         decoder.keyDecodingStrategy = .convertFromSnakeCase
         return try decoder.decode(T.self, from: data)
+    }
+}
+
+/// OMDb — opcjonalnie, tylko po ocenę IMDb (darmowy klucz: 1000 zapytań dziennie).
+struct OMDbClient: Sendable {
+    let apiKey: String
+
+    func imdbRating(_ imdbID: String) async throws -> Double? {
+        struct Response: Decodable {
+            let imdbRating: String?
+        }
+        var components = URLComponents(string: "https://www.omdbapi.com/")!
+        components.queryItems = [URLQueryItem(name: "i", value: imdbID), URLQueryItem(name: "apikey", value: apiKey)]
+        let data = try await HTTP.get(URLRequest(url: components.url!), service: "OMDb")
+        return try JSONDecoder().decode(Response.self, from: data).imdbRating.flatMap(Double.init)
     }
 }

@@ -1,23 +1,59 @@
 import AppKit
 import Foundation
 
-/// Jedna propozycja filmu. Aplikacja ją przygotowuje, widget tylko wyświetla.
-struct Pick: Codable, Hashable, Identifiable {
-    enum Kind: String, Codable {
-        /// Nowy film dopasowany do ocen.
-        case discovery
-        /// Film oceniony wysoko ponad 5 lat temu — do obejrzenia ponownie.
-        case rewatch
+struct Rating: Codable, Hashable, Sendable {
+    enum Source: String, Codable, Sendable {
+        case filmweb, imdb, tmdb
+
+        var shortLabel: String {
+            switch self {
+            case .filmweb: "FW"
+            case .imdb: "IMDb"
+            case .tmdb: "TMDB"
+            }
+        }
     }
 
-    /// Identyfikator filmu w TMDB.
-    var id: Int
+    var value: Double
+    var source: Source
+
+    /// „7,8” — po polsku, z przecinkiem.
+    var formatted: String {
+        value.formatted(.number.precision(.fractionLength(1)).locale(Locale(identifier: "pl_PL")))
+    }
+}
+
+/// Jedna propozycja. Aplikacja ją przygotowuje, widget tylko wyświetla.
+struct Pick: Codable, Hashable, Identifiable, Sendable {
+    enum Kind: String, Codable, Sendable {
+        /// Nowy tytuł dopasowany do Twojego gustu.
+        case discovery
+        /// Z Twojej listy „Chcę zobaczyć”.
+        case wanted
+        /// Oceniony wysoko ponad 5 lat temu — do obejrzenia ponownie.
+        case rewatch
+
+        var label: String {
+            switch self {
+            case .discovery: "W Twoim guście"
+            case .wanted: "Z listy „Chcę zobaczyć”"
+            case .rewatch: "Do powtórki"
+            }
+        }
+    }
+
+    var tmdbID: Int
+    var media: MediaKind
     var title: String
+    var overview: String?
+    var rating: Rating?
     var service: StreamingService
     var openURL: URL
     var kind: Kind
     /// Nazwa pliku plakatu w katalogu `Posters` kontenera App Group.
     var posterFile: String?
+
+    var id: String { "\(media.rawValue)-\(tmdbID)" }
 }
 
 struct PicksSnapshot: Codable {
@@ -43,7 +79,7 @@ enum PicksStore {
     }
 
     private static var snapshotURL: URL? {
-        containerURL?.appendingPathComponent("picks.json")
+        containerURL?.appendingPathComponent("picks-v2.json")
     }
 
     static func load() -> PicksSnapshot {
@@ -78,12 +114,8 @@ enum PicksStore {
         return (0..<min(pageSize, picks.count)).map { picks[(start + $0) % picks.count] }
     }
 
-    static func posterURL(for pick: Pick) -> URL? {
-        guard let file = pick.posterFile else { return nil }
-        return postersDirectory?.appendingPathComponent(file)
-    }
-
     static func posterImage(for pick: Pick) -> NSImage? {
-        posterURL(for: pick).flatMap(NSImage.init(contentsOf:))
+        guard let file = pick.posterFile, let url = postersDirectory?.appendingPathComponent(file) else { return nil }
+        return NSImage(contentsOf: url)
     }
 }
