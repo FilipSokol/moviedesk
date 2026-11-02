@@ -210,7 +210,7 @@ extension Pick {
         Pick(tmdbID: 3, media: .serial, title: "Severance", overview: nil, rating: Rating(value: 8.7, source: .imdb),
              service: .appleTV, openURL: URL(string: "https://tv.apple.com")!, kind: .wanted, posterFile: nil),
     ]
-
+}
 
 #Preview("Średni", as: .systemMedium) {
     MovieDeskWidget()
