@@ -23,6 +23,14 @@ targets:
   MovieDesk:
     type: application
     platform: macOS
+    preBuildScripts:
+      - name: Sprawdź Team ID
+        basedOnDependencyAnalysis: false
+        script: |
+          if [ -z "$DEVELOPMENT_TEAM" ]; then
+            echo "error: Brak Team ID. Skopiuj Config/Local.xcconfig.example jako Config/Local.xcconfig i wpisz DEVELOPMENT_TEAM."
+            exit 1
+          fi
     sources:
       - App
       - Shared

@@ -37,7 +37,7 @@ struct LinksEditorView: View {
                     } label: {
                         Image(systemName: "ellipsis.circle")
                     }
-                    .menuStyle(.borderlessButton)
+                    .menuIndicator(.hidden)
                     .fixedSize()
                 }
                 .buttonStyle(.borderless)
@@ -192,10 +192,8 @@ private struct NewLinkSheet: View {
         }
         .padding(20)
         .frame(width: 420)
-        .onAppear {
-            tint = defaultTint
-            addressFocused = true
-        }
+        .defaultFocus($addressFocused, true)
+        .onAppear { tint = defaultTint }
     }
 }
 
@@ -229,7 +227,8 @@ private struct TintGrid: View {
     @Binding var selection: LinkTint
 
     var body: some View {
-        HStack(spacing: 8) {
+        // Zawija się, gdy brakuje miejsca (wąskie okno).
+        LazyVGrid(columns: [GridItem(.adaptive(minimum: 20, maximum: 24), spacing: 8)], alignment: .leading, spacing: 8) {
             ForEach(LinkTint.allCases) { tint in
                 Button {
                     selection = tint
@@ -247,7 +246,8 @@ private struct TintGrid: View {
                         .overlay(Circle().strokeBorder(.white.opacity(0.35), lineWidth: 0.5))
                 }
                 .buttonStyle(.plain)
-                .help(tint.rawValue)
+                .help(tint.displayName)
+                .accessibilityLabel(tint.displayName)
             }
         }
     }

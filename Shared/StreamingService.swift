@@ -95,15 +95,17 @@ enum StreamingService: String, Codable, CaseIterable, Identifiable, Sendable {
     /// Wyszukiwanie tytułu w serwisie — tylko tam, gdzie znamy format adresu.
     /// Dla pozostałych używamy strony „gdzie obejrzeć” z TMDB.
     func searchURL(for title: String) -> URL? {
-        guard let query = title.addingPercentEncoding(withAllowedCharacters: .alphanumerics) else { return nil }
-        let string: String? = switch self {
-        case .netflix: "https://www.netflix.com/search?q=\(query)"
-        case .hboMax: "https://play.hbomax.com/search?q=\(query)"
-        case .primeVideo: "https://www.primevideo.com/search/?phrase=\(query)"
-        case .disneyPlus: "https://www.disneyplus.com/search?q=\(query)"
-        case .appleTV: "https://tv.apple.com/pl/search?term=\(query)"
+        let target: (base: String, parameter: String)? = switch self {
+        case .netflix: ("https://www.netflix.com/search", "q")
+        case .hboMax: ("https://play.hbomax.com/search", "q")
+        case .primeVideo: ("https://www.primevideo.com/search/", "phrase")
+        case .disneyPlus: ("https://www.disneyplus.com/search", "q")
+        case .appleTV: ("https://tv.apple.com/pl/search", "term")
         default: nil
         }
-        return string.flatMap(URL.init(string:))
+        guard let target else { return nil }
+        var components = URLComponents(string: target.base)
+        components?.queryItems = [URLQueryItem(name: target.parameter, value: title)]
+        return components?.url
     }
 }

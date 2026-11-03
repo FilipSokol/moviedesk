@@ -1,11 +1,20 @@
 import Foundation
 
-/// Kliknięcie w widget otwiera `moviedesk://open?url=…`; aplikacja przekazuje adres
-/// do domyślnej przeglądarki. Dzięki temu zachowanie nie zależy od tego,
-/// jak system traktuje linki http(s) w widgetach.
+/// Kliknięcia w widgetach idą przez schemat `moviedesk://` do aplikacji:
+/// - `moviedesk://open?url=…` — otwórz stronę w domyślnej przeglądarce,
+/// - `moviedesk://sync` — zsynchronizuj teraz,
+/// - `moviedesk://settings` — otwórz ustawienia.
 enum DeepLink {
     static let scheme = "moviedesk"
-    private static let host = "open"
+
+    enum Route: Equatable {
+        case open(URL)
+        case sync
+        case settings
+    }
+
+    static let syncURL = URL(string: "moviedesk://sync")!
+    static let settingsURL = URL(string: "moviedesk://settings")!
 
     static func url(for link: QuickLink) -> URL? {
         link.url.flatMap(url(for:))
@@ -16,17 +25,33 @@ enum DeepLink {
         else { return nil }
         var components = URLComponents()
         components.scheme = scheme
-        components.host = host
+        components.host = "open"
         components.percentEncodedQuery = "url=" + encoded
         return components.url
     }
 
-    /// Zwraca docelowy adres http(s) albo `nil` dla czegokolwiek innego.
-    static func target(from url: URL) -> URL? {
-        guard url.scheme?.lowercased() == scheme, url.host == host,
-              let value = URLComponents(url: url, resolvingAgainstBaseURL: false)?
-                  .queryItems?.first(where: { $0.name == "url" })?.value
-        else { return nil }
-        return QuickLink.webURL(from: value)
+    static func route(from url: URL) -> Route? {
+        guard url.scheme?.lowercased() == scheme else { return nil }
+        switch url.host {
+        case "sync":
+            return .sync
+        case "settings":
+            return .settings
+        case "open":
+            guard let value = URLComponents(url: url, resolvingAgainstBaseURL: false)?
+                .queryItems?.first(where: { $0.name == "url" })?.value,
+                let target = QuickLink.webURL(from: value)
+            else { return nil }
+            return .open(target)
+        default:
+            return nil
+        }
     }
+}
+
+extension Notification.Name {
+    /// Widget poprosił o synchronizację (`moviedesk://sync`).
+    static let movieDeskSyncRequested = Notification.Name("MovieDeskSyncRequested")
+    /// Widget poprosił o ustawienia (`moviedesk://settings`).
+    static let movieDeskSettingsRequested = Notification.Name("MovieDeskSettingsRequested")
 }

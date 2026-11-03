@@ -44,6 +44,23 @@ enum LinkTint: String, Codable, CaseIterable, Identifiable {
 
     var id: String { rawValue }
 
+    var displayName: String {
+        switch self {
+        case .red: "czerwony"
+        case .orange: "pomarańczowy"
+        case .yellow: "żółty"
+        case .green: "zielony"
+        case .mint: "miętowy"
+        case .teal: "morski"
+        case .cyan: "błękitny"
+        case .blue: "niebieski"
+        case .indigo: "indygo"
+        case .purple: "fioletowy"
+        case .pink: "różowy"
+        case .graphite: "grafitowy"
+        }
+    }
+
     var color: Color {
         switch self {
         case .red: .red

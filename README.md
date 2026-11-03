@@ -1,22 +1,39 @@
 # MovieDesk
 
-Widget na pulpit macOS w stylu Liquid Glass: trzy filmy lub seriale na dziś, dobrane do
-Twojego gustu z Filmwebu i dostępne w Twoich serwisach VOD, do tego małe skróty do stron.
+Widgety na pulpit macOS w stylu Liquid Glass: filmy i seriale na dziś, dobrane do Twojego
+gustu z Filmwebu i dostępne w Twoich serwisach VOD, do tego skróty do stron.
 
-- **Widget** (średni i duży): trzy plakaty z oceną (Filmweb, IMDb albo TMDB), skróty
-  i przycisk ↻. Przycisk pokazuje kolejną trójkę — plakaty przesuwają się z prawej
-  z lekkim opóźnieniem między kolumnami, a strzałka robi pełny obrót. Kliknięcie plakatu
-  otwiera tytuł w serwisie, w którym jest dostępny.
-- **Pasek menu**: ikona ▶︎ otwiera panel z tymi samymi tytułami; po najechaniu na plakat
-  pojawia się dymek z opisem. (Widgety macOS nie obsługują najechania kursorem, dlatego
-  opis jest tylko w panelu.)
-- **Ustawienia** (z panelu): zakładki „Rekomendacje” i „Linki”.
+## Widgety
+
+| Widget | Rozmiary | Co robi |
+|---|---|---|
+| **Jeden na dziś** | mały, średni, duży | Jeden tytuł w dużym formacie: kadr, plakat, opis, ocena, „bo lubisz …”. Duży ma pasek „Dalej” — kliknięcie miniatury przenosi ją na główne miejsce — i „Skończysz ok. 22:41”. |
+| **Na dziś** | średni, duży | Trzy tytuły obok siebie. Duży ma pod każdym przyciski: inny tytuł, nie pokazuj więcej, zapisz na później. |
+| **Wieczór** | bardzo duży | Propozycja na wieczór na całym kadrze + kolejka „Dalej” z 4 tytułami. |
+| **Skróty** | mały, średni | Same linki, większe i z nazwami. |
+
+Każdy widget z propozycjami ma ustawienia („Edytuj widżet”): **Rodzaj** (filmy / seriale),
+**Źródło** (w Twoim guście / z listy „Chcę zobaczyć” / do powtórki / zapisane) i **Serwis**.
+Widgety o tych samych ustawieniach przewijają się razem; różne ustawienia — niezależnie.
+
+Akcje i animacje:
+- **↻ / ⏭** — nowe tytuły wjeżdżają z prawej, kolumna po kolumnie; strzałka robi pełny obrót.
+- **Nie pokazuj więcej** — tytuł znika ze wszystkich widgetów i z przyszłych propozycji,
+  na jego miejsce wskakuje następny; przez 8 sekund widać „Ukryto · Cofnij”.
+- **Zapisz na później** — tytuł trafia do „Zapisanych” (filtr w widgecie, pasek w panelu)
+  i zostaje, nawet gdy wypadnie z puli.
+- Kliknięcie plakatu otwiera tytuł w serwisie, w którym jest dostępny.
+
+W panelu z paska menu (ikona ▶︎) są te same trzy tytuły co w domyślnym widgecie „Na dziś”,
+dymek z opisem po najechaniu, a pod prawym klikiem: inny tytuł, zapisz, „już obejrzane”,
+nie pokazuj więcej. Ukryte i zapisane tytuły przywrócisz w ustawieniach.
 
 ## Skąd biorą się propozycje
 
 Codziennie o północy (albo zaraz po wybudzeniu Maca) aplikacja:
 
-1. pobiera z Filmwebu Twoje oceny filmów i seriali oraz listę „Chcę zobaczyć”,
+1. pobiera z Filmwebu (przez zalogowaną sesję w aplikacji) Twoje oceny filmów i seriali
+   oraz listę „Chcę zobaczyć”,
 2. dopasowuje je do TMDB (po tytule oryginalnym i roku) razem z gatunkami,
 3. buduje profil gustu: które gatunki oceniasz powyżej, a które poniżej swojej średniej,
 4. zbiera trzy grupy kandydatów:
@@ -27,16 +44,24 @@ Codziennie o północy (albo zaraz po wybudzeniu Maca) aplikacja:
    - **do powtórki** — ulubione ocenione ponad 5 lat temu,
 5. zostawia tylko tytuły dostępne w abonamencie serwisów, do których masz linki
    (TMDB `watch/providers`, region PL, dane JustWatch),
-6. dokłada ocenę (Filmweb dla tytułów z Filmwebu, IMDb przez OMDb, jeśli podasz klucz,
-   w pozostałych przypadkach TMDB) i plakat, po czym zapisuje pulę ~30 tytułów
-   w kontenerze App Group, z którego czyta widget.
+6. dokłada szczegóły (rok, gatunki, długość, sezony, kadr), ocenę (Filmweb dla tytułów
+   z Filmwebu, IMDb przez OMDb, jeśli podasz klucz, w pozostałych przypadkach TMDB)
+   i plakat, po czym zapisuje pulę ~60 tytułów w kontenerze App Group.
 
-Pierwsza synchronizacja trwa kilka minut, kolejne pobierają tylko nowości. Pamięć
+Tytuły ukryte w widgetach nie wracają. Gdy synchronizacja się nie uda (np. brak sieci
+po wybudzeniu), ponawia się po 5, 15 i 60 minutach; jeśli dane są starsze niż półtorej
+doby, widget pokazuje „Dane sprzed N dni · odśwież”.
+
+Pierwsza synchronizacja trwa kilka minut; kolejne są szybkie, bo tytuły i dopasowania
+do TMDB są zapamiętane (oceny pobierają się w całości, bo mogą się zmieniać). Pamięć
 podręczna leży w kontenerze aplikacji (`Application Support/MovieDesk/library-v2.json`).
 
 Filmweb nie ma publicznego API — aplikacja korzysta z API, którego używa strona
-filmweb.pl, z ciasteczkiem Twojej zalogowanej sesji. Jeśli Filmweb coś zmieni,
-synchronizacja pokaże błąd w ustawieniach.
+filmweb.pl. Logujesz się raz, w okienku Filmwebu w aplikacji (Ustawienia → Filmweb →
+Zaloguj się…); sesja leży w magazynie WebKitu aplikacji. Token Filmwebu żyje ok. 15 minut,
+ale strona sama go odnawia z długowiecznego ciasteczka logowania, więc nic nie wklejasz
+i niczego nie odświeżasz ręcznie. Gdy Filmweb Cię wyloguje, ustawienia poproszą
+o ponowne zalogowanie.
 
 ## Wymagania
 
@@ -60,15 +85,17 @@ synchronizacja pokaże błąd w ustawieniach.
    ```
 
 3. Uruchom schemat **MovieDesk** (⌘R). W pasku menu pojawi się ikona ▶︎.
-4. Panel → **Ustawienia** → **Rekomendacje**: wklej ciasteczko Filmwebu i klucz TMDB
-   (opcjonalnie OMDb), kliknij **Synchronizuj teraz**. Włącz **Uruchamiaj przy logowaniu**,
+4. Panel → **Ustawienia** → **Rekomendacje**: **Zaloguj się…** do Filmwebu, wklej klucz
+   TMDB (opcjonalnie OMDb), kliknij **Synchronizuj teraz**. Włącz **Uruchamiaj przy logowaniu**,
    żeby nocna synchronizacja działała bez pamiętania o aplikacji.
-5. Dodaj widget: prawy klik na pulpicie → **Edytuj widżety…** → „MovieDesk”.
+5. Dodaj widgety: prawy klik na pulpicie → **Edytuj widżety…** → „MovieDesk”.
+   Bez Team ID w `Config/Local.xcconfig` build zatrzyma się z czytelnym błędem.
 
 ## Linki i serwisy
 
-Panel → **Ustawienia** → **Linki** → **Dodaj link**, wpisz nazwę i adres (wystarczy
-`example.com`). Dodać można dowolną stronę. Linki do Netflixa, HBO Max, Prime Video,
+Panel → **Ustawienia** → **Linki** → **+** (albo ⌘N): wklej adres (wystarczy
+`example.com`), nazwa podpowie się sama. Kliknij link na liście, żeby zmienić nazwę,
+adres albo kolor. Dodać można dowolną stronę. Linki do Netflixa, HBO Max, Prime Video,
 Disney+, SkyShowtime, Apple TV+, Canal+, Playera i Polsat Box Go są rozpoznawane
 (oznaczenie „VOD”) i wyznaczają, z których serwisów pochodzą propozycje. Pozostałe linki
 to zwykłe skróty. Kolejność zmieniasz przeciąganiem. Średni widget pokazuje 4 pierwsze
@@ -77,8 +104,9 @@ linki, duży 8, panel w pasku menu wszystkie.
 ## Prywatność
 
 W repozytorium nie ma żadnych danych osobistych. Team ID i ewentualny własny prefiks
-bundle ID są w `Config/Local.xcconfig` (w `.gitignore`). Ciasteczko Filmwebu
-oraz klucze TMDB/OMDb wpisujesz w aplikacji — zostają w jej ustawieniach na Twoim Macu.
+bundle ID są w `Config/Local.xcconfig` (w `.gitignore`). Klucze TMDB/OMDb
+wpisujesz w aplikacji — zostają w jej ustawieniach na Twoim Macu; sesja Filmwebu jest
+w magazynie WebKitu aplikacji. Nic z tego nie trafia do widgetu ani do repozytorium.
 
 ## Jak to działa
 

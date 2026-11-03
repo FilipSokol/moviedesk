@@ -8,10 +8,12 @@ struct MovieDeskApp: App {
     @StateObject private var sync = SyncController()
 
     var body: some Scene {
-        MenuBarExtra("MovieDesk", systemImage: "play.rectangle.on.rectangle") {
+        MenuBarExtra {
             MenuBarPanel()
                 .environmentObject(links)
                 .environmentObject(sync)
+        } label: {
+            MenuBarLabel()
         }
         .menuBarExtraStyle(.window)
 
@@ -48,7 +50,24 @@ struct MainWindow: View {
     }
 }
 
-/// Odbiera `moviedesk://open?url=…` z widgetu i otwiera adres w domyślnej przeglądarce.
+/// Ikona w pasku menu. Żyje przez cały czas działania aplikacji, więc to ona otwiera
+/// ustawienia na prośbę widgetu (`moviedesk://settings`).
+private struct MenuBarLabel: View {
+    @Environment(\.openWindow) private var openWindow
+
+    var body: some View {
+        Image(systemName: "play.rectangle.on.rectangle")
+            .accessibilityLabel("MovieDesk")
+            .onReceive(NotificationCenter.default.publisher(for: .movieDeskSettingsRequested)) { _ in
+                NSApp.activate()
+                openWindow(id: MainWindow.id)
+            }
+    }
+}
+
+/// Odbiera adresy `moviedesk://…` z widgetów:
+/// - `open?url=…` — otwiera stronę w domyślnej przeglądarce,
+/// - `sync` — synchronizacja teraz, `settings` — ustawienia.
 ///
 /// Handler Apple Event rejestrujemy przed zakończeniem startu, żeby złapać także URL,
 /// który uruchomił aplikację — i żeby SwiftUI nie otwierało przy tym nowego okna.
@@ -65,8 +84,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     @objc private func handleGetURL(_ event: NSAppleEventDescriptor, withReplyEvent reply: NSAppleEventDescriptor) {
         guard let raw = event.paramDescriptor(forKeyword: AEKeyword(keyDirectObject))?.stringValue,
               let url = URL(string: raw),
-              let target = DeepLink.target(from: url)
+              let route = DeepLink.route(from: url)
         else { return }
-        NSWorkspace.shared.open(target)
+        switch route {
+        case .open(let target):
+            NSWorkspace.shared.open(target)
+        case .sync:
+            NotificationCenter.default.post(name: .movieDeskSyncRequested, object: nil)
+        case .settings:
+            NotificationCenter.default.post(name: .movieDeskSettingsRequested, object: nil)
+        }
     }
 }

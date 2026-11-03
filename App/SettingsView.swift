@@ -11,24 +11,32 @@ struct SettingsView: View {
         Form {
             Section {
                 HStack {
-                    if sync.isCheckingFilmweb {
+                    switch sync.filmweb {
+                    case .checking:
                         ProgressView().controlSize(.small)
                         Text("Sprawdzam…").foregroundStyle(.secondary)
-                    } else if let user = sync.filmwebUser {
+                    case .loggedIn(let user):
                         Label("Zalogowano: \(user)", systemImage: "checkmark.circle.fill")
                             .foregroundStyle(.green)
-                    } else {
+                    case .loggedOut:
                         Label("Nie zalogowano", systemImage: "person.crop.circle.badge.exclamationmark")
+                            .foregroundStyle(.secondary)
+                    case .unknown:
+                        Label("Nie da się teraz sprawdzić (brak sieci?)", systemImage: "wifi.exclamationmark")
                             .foregroundStyle(.secondary)
                     }
                     Spacer()
-                    if sync.filmwebUser == nil {
+                    switch sync.filmweb {
+                    case .loggedIn:
+                        Button("Wyloguj") { Task { await sync.logOutOfFilmweb() } }
+                    case .unknown:
+                        Button("Sprawdź ponownie") { Task { await sync.checkFilmweb() } }
+                    default:
                         Button("Zaloguj się…") {
                             NSApp.activate()
                             openWindow(id: FilmwebLoginView.windowID)
                         }
-                    } else {
-                        Button("Wyloguj") { Task { await sync.logOutOfFilmweb() } }
+                        .disabled(sync.filmweb == .checking)
                     }
                 }
             } header: {
@@ -90,12 +98,55 @@ struct SettingsView: View {
                     get: { sync.launchesAtLogin },
                     set: { sync.setLaunchesAtLogin($0) }
                 ))
+                if sync.launchStatus == .requiresApproval {
+                    Text("Zatwierdź MovieDesk w Ustawieniach systemowych → Ogólne → Rzeczy otwierane podczas logowania.")
+                        .font(.caption)
+                        .foregroundStyle(.orange)
+                }
             } header: {
                 Text("Synchronizacja")
             } footer: {
-                Text("Oceny pobierają się codziennie o północy (albo zaraz po wybudzeniu Maca, jeśli spał). Pierwsza synchronizacja trwa dłużej — kolejne pobierają tylko nowe oceny.")
+                Text("Oceny pobierają się codziennie o północy (albo zaraz po wybudzeniu Maca, jeśli spał). Pierwsza synchronizacja trwa kilka minut; kolejne są szybkie, bo tytuły i dopasowania są zapamiętane. Gdy się nie uda, ponawia się po 5, 15 i 60 minutach.")
             }
+
+            HiddenAndSavedSection()
         }
         .formStyle(.grouped)
+        .onAppear { sync.refreshLaunchStatus() }
+    }
+}
+
+/// Ukryte w widgetach i zapisane na później — z możliwością przywrócenia.
+private struct HiddenAndSavedSection: View {
+    @EnvironmentObject private var sync: SyncController
+
+    var body: some View {
+        Section {
+            if sync.savedPicks.isEmpty && sync.hiddenTitles.isEmpty {
+                Text("Nic tu jeszcze nie ma.").foregroundStyle(.secondary)
+            }
+            ForEach(sync.savedPicks) { pick in
+                HStack {
+                    Label(pick.title, systemImage: "bookmark.fill")
+                    Spacer()
+                    Text(pick.service.displayName).foregroundStyle(.secondary)
+                    Button("Usuń") { sync.setSaved(pick, false) }
+                        .buttonStyle(.borderless)
+                }
+            }
+            ForEach(sync.hiddenTitles, id: \.id) { item in
+                HStack {
+                    Label(item.title, systemImage: item.reason == .watched ? "checkmark.circle" : "eye.slash")
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    Button("Przywróć") { sync.restore(item.id) }
+                        .buttonStyle(.borderless)
+                }
+            }
+        } header: {
+            Text("Zapisane i ukryte")
+        } footer: {
+            Text("Ukryte tytuły nie wracają w propozycjach, dopóki ich nie przywrócisz.")
+        }
     }
 }

@@ -6,6 +6,7 @@ import WidgetKit
 /// Źródło prawdy dla listy linków po stronie aplikacji.
 /// Każda zmiana (z opóźnieniem, żeby nie przeładowywać widgetu przy każdym znaku)
 /// trafia do App Group i odświeża widget.
+@MainActor
 final class LinksModel: ObservableObject {
     @Published var links: [QuickLink]
 
@@ -25,7 +26,7 @@ final class LinksModel: ObservableObject {
         terminateObserver = NotificationCenter.default.addObserver(
             forName: NSApplication.willTerminateNotification, object: nil, queue: .main
         ) { [weak self] _ in
-            self?.flush()
+            MainActor.assumeIsolated { self?.flush() }
         }
     }
 
@@ -37,7 +38,11 @@ final class LinksModel: ObservableObject {
 
     @discardableResult
     func add(name: String, address: String, tint: LinkTint) -> QuickLink.ID {
-        let link = QuickLink(name: name, address: address, tint: tint)
+        let link = QuickLink(
+            name: name.trimmingCharacters(in: .whitespacesAndNewlines),
+            address: address.trimmingCharacters(in: .whitespacesAndNewlines),
+            tint: tint
+        )
         links.append(link)
         return link.id
     }

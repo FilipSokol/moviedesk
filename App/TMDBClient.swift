@@ -2,7 +2,11 @@ import Foundation
 
 /// Film albo serial z TMDB (pola filmów i seriali mają różne nazwy).
 struct TMDBTitle: Decodable, Hashable, Sendable {
-    struct Genre: Decodable, Hashable, Sendable { let id: Int }
+    struct Genre: Decodable, Hashable, Sendable {
+        let id: Int
+        let name: String?
+    }
+    struct ExternalIDs: Decodable, Hashable, Sendable { let imdbId: String? }
 
     let id: Int
     let title: String?
@@ -17,10 +21,19 @@ struct TMDBTitle: Decodable, Hashable, Sendable {
     let genreIds: [Int]?
     /// …a w szczegółach.
     let genres: [Genre]?
+    // Tylko w szczegółach:
+    let backdropPath: String?
+    let runtime: Int?
+    let episodeRunTime: [Int]?
+    let numberOfSeasons: Int?
+    let tagline: String?
+    let externalIds: ExternalIDs?
 
     var displayTitle: String { title ?? name ?? "" }
     var year: Int? { (releaseDate ?? firstAirDate).flatMap { Int($0.prefix(4)) } }
     var genreIDs: [Int] { genreIds ?? genres?.map(\.id) ?? [] }
+    var genreNames: [String] { genres?.compactMap(\.name) ?? [] }
+    var runtimeMinutes: Int? { runtime ?? episodeRunTime?.first }
 }
 
 struct WatchProviders: Sendable {
@@ -37,12 +50,24 @@ struct TMDBClient: Sendable {
     private static let base = "https://api.themoviedb.org/3/"
     private var usesBearer: Bool { credential.count > 40 }
 
-    func search(_ media: MediaKind, _ query: String) async throws -> [TMDBTitle] {
-        try await results("search/\(media.tmdbPath)", ["query": query])
+    /// Sprawdza klucz jednym tanim zapytaniem — przed długą synchronizacją.
+    func validate() async throws {
+        struct Configuration: Decodable {}
+        let _: Configuration = try await get("configuration", [:])
     }
 
+    /// Wyszukiwanie z rokiem (gdy znany) — TMDB wtedy nie podsuwa tytułów z innych lat.
+    func search(_ media: MediaKind, _ query: String, year: Int? = nil) async throws -> [TMDBTitle] {
+        var parameters = ["query": query]
+        if let year {
+            parameters[media == .film ? "primary_release_year" : "first_air_date_year"] = String(year)
+        }
+        return try await results("search/\(media.tmdbPath)", parameters)
+    }
+
+    /// Szczegóły z identyfikatorami zewnętrznymi (IMDb) w jednym zapytaniu.
     func details(_ media: MediaKind, _ id: Int) async throws -> TMDBTitle {
-        try await get("\(media.tmdbPath)/\(id)", [:])
+        try await get("\(media.tmdbPath)/\(id)", ["append_to_response": "external_ids"])
     }
 
     func recommendations(_ media: MediaKind, _ id: Int) async throws -> [TMDBTitle] {
@@ -66,14 +91,9 @@ struct TMDBClient: Sendable {
         )
     }
 
-    func imdbID(_ media: MediaKind, _ id: Int) async throws -> String? {
-        struct Response: Decodable { let imdbId: String? }
-        let response: Response = try await get("\(media.tmdbPath)/\(id)/external_ids", [:])
-        return response.imdbId
-    }
-
-    func poster(_ path: String) async throws -> Data {
-        let request = URLRequest(url: URL(string: "https://image.tmdb.org/t/p/w342" + path)!)
+    /// Obrazek z CDN TMDB, np. `w342` (plakat) albo `w780` (kadr).
+    func image(_ path: String, size: String) async throws -> Data {
+        let request = URLRequest(url: URL(string: "https://image.tmdb.org/t/p/\(size)" + path)!)
         return try await HTTP.get(request, service: "TMDB")
     }
 

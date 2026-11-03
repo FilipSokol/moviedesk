@@ -36,6 +36,8 @@ struct FilmwebClient: Sendable {
     private static let base = "https://www.filmweb.pl/api/v1/"
 
     /// Wszystkie Twoje oceny filmów albo seriali (strona po stronie, aż do pustej).
+    /// Pobieramy całość za każdym razem, bo oceny mogą się zmieniać; tytuły i dopasowania
+    /// do TMDB są już w pamięci podręcznej, więc to szybkie.
     func ratings(_ media: MediaKind, progress: @Sendable (Int) async -> Void) async throws -> [RatedTitle] {
         struct Vote: Decodable {
             let entity: Int
@@ -44,11 +46,14 @@ struct FilmwebClient: Sendable {
             let favorite: Bool?
         }
         var all: [RatedTitle] = []
+        var seen = Set<Int>()
         for page in 1...500 {
-            let json = try await FilmwebSession.shared.getJSON("logged/vote/title/\(media.rawValue)?page=\(page)")
-            let batch = try JSONDecoder().decode([Vote].self, from: JSONSerialization.data(withJSONObject: json))
+            let data = try await FilmwebSession.shared.getData("logged/vote/title/\(media.rawValue)?page=\(page)")
+            let batch = try JSONDecoder().decode([Vote].self, from: data)
             if batch.isEmpty { break }
-            all += batch.compactMap { vote in
+            let fresh = batch.filter { seen.insert($0.entity).inserted }
+            if fresh.isEmpty { break } // strony się powtarzają — koniec listy
+            all += fresh.compactMap { vote in
                 guard let rate = vote.rate, rate > 0 else { return nil }
                 return RatedTitle(
                     filmwebID: vote.entity,
@@ -66,8 +71,8 @@ struct FilmwebClient: Sendable {
 
     /// Lista „Chcę zobaczyć”. API zwraca pary `[id, poziom]`; poziom 0 oznacza „nie interesuje mnie”.
     func wantToSee(_ media: MediaKind) async throws -> [WantedTitle] {
-        let json = try await FilmwebSession.shared.getJSON("logged/want2see?entityName=\(media.rawValue)")
-        guard let entries = json as? [[Any]] else { return [] }
+        let data = try await FilmwebSession.shared.getData("logged/want2see?entityName=\(media.rawValue)")
+        guard let entries = (try? JSONSerialization.jsonObject(with: data)) as? [[Any]] else { return [] }
         return entries.compactMap { entry in
             guard let id = (entry.first as? NSNumber)?.intValue else { return nil }
             let level = entry.count > 1 ? (entry[1] as? NSNumber)?.intValue ?? 1 : 1

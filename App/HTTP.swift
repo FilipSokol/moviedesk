@@ -17,6 +17,8 @@ enum HTTP {
         let config = URLSessionConfiguration.default
         config.timeoutIntervalForRequest = 30
         config.waitsForConnectivity = true
+        // Bez tego czekanie na sieć trwa domyślnie do 7 dni i blokuje synchronizację.
+        config.timeoutIntervalForResource = 120
         return URLSession(configuration: config)
     }()
 

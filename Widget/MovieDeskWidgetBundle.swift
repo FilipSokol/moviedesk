@@ -4,6 +4,9 @@ import WidgetKit
 @main
 struct MovieDeskWidgetBundle: WidgetBundle {
     var body: some Widget {
-        MovieDeskWidget()
+        HeroWidget()
+        ShelfWidget()
+        BoardWidget()
+        LinksWidget()
     }
 }

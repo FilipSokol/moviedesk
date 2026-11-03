@@ -4,6 +4,8 @@ import Foundation
 struct TMDBRef: Codable, Hashable, Sendable {
     let id: Int
     let genres: [Int]
+    /// Kiedy szukaliśmy — „nie znaleziono” ponawiamy po 30 dniach.
+    var checkedAt: Date? = nil
 }
 
 /// Lokalna pamięć podręczna aplikacji (Application Support w kontenerze aplikacji).
