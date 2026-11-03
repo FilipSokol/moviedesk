@@ -104,6 +104,10 @@ enum PicksStore {
         containerURL?.appendingPathComponent("Posters", isDirectory: true)
     }
 
+    static var iconsDirectory: URL? {
+        containerURL?.appendingPathComponent("Icons", isDirectory: true)
+    }
+
     static var logosDirectory: URL? {
         containerURL?.appendingPathComponent("Logos", isDirectory: true)
     }

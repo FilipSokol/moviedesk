@@ -210,10 +210,13 @@ private struct SavedStrip: View {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 6) {
                     ForEach(picks) { pick in
-                        Link(destination: pick.openURL) {
+                        Button {
+                            NSWorkspace.shared.open(pick.openURL)
+                        } label: {
                             PickPoster(pick: pick, cornerRadius: 6, maxPixel: 120, showsBadges: false)
-                                .frame(width: 34)
+                                .frame(width: 34, height: 51)
                         }
+                        .buttonStyle(.plain)
                         .help("\(pick.title) · \(pick.destinationName)")
                         .contextMenu {
                             Button("Usuń z zapisanych", systemImage: "bookmark.slash") {

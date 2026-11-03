@@ -18,9 +18,16 @@ final class LinksModel: ObservableObject {
         saveSubscription = $links
             .dropFirst()
             .debounce(for: .milliseconds(350), scheduler: RunLoop.main)
-            .sink { links in
+            .sink { [weak self] links in
                 LinkStore.save(links)
                 WidgetCenter.shared.reloadAllTimelines()
+                // Nowy link — od razu dociągamy jego ikonę (favikonę strony).
+                Task { @MainActor in
+                    if await IconFetcher.refreshFavicons(for: links) {
+                        self?.objectWillChange.send()
+                        WidgetCenter.shared.reloadAllTimelines()
+                    }
+                }
             }
         // Ostatnie zmiany mogły jeszcze czekać na debounce.
         terminateObserver = NotificationCenter.default.addObserver(

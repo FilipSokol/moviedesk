@@ -22,6 +22,25 @@ struct LinkGlyph: View {
                 .clipShape(Circle())
                 .overlay(Circle().strokeBorder(Color.white.opacity(0.4), lineWidth: 0.75))
                 .shadow(color: .black.opacity(0.25), radius: 4, y: 2)
+        } else if let url = link.url, let icon = LinkIcon.image(for: url, maxPixel: size * 3) {
+            // Zwykła strona — jej favikona: na całe kółko albo pomniejszona na jasnym tle.
+            ZStack {
+                if icon.style == .padded {
+                    Circle().fill(Color.white)
+                }
+                Image(decorative: icon.image, scale: 1)
+                    .resizable()
+                    .widgetAccentedRenderingMode(.fullColor)
+                    .scaledToFit()
+                    .frame(
+                        width: icon.style == .padded ? size * 0.62 : size,
+                        height: icon.style == .padded ? size * 0.62 : size
+                    )
+            }
+            .frame(width: size, height: size)
+            .clipShape(Circle())
+            .overlay(Circle().strokeBorder(Color.white.opacity(0.4), lineWidth: 0.75))
+            .shadow(color: .black.opacity(0.25), radius: 4, y: 2)
         } else {
             monogram
         }

@@ -268,7 +268,7 @@ struct RecommendationEngine {
         // 12. Szczegóły, oceny i obrazki (+ logotypy serwisów, raz)
         await progress("Pobieranie szczegółów, ocen i plakatów…")
         let picks = await finalize(everything)
-        await saveServiceLogos()
+        await IconFetcher.refreshServiceLogos(tmdb: tmdb)
         return PicksSnapshot(generatedAt: .now, picks: picks)
     }
 
@@ -492,24 +492,6 @@ struct RecommendationEngine {
             return Ready(candidate: candidate, service: nil, openURL: url, scenario: .togetherAnywhere)
         }
         return (vod, anywhere)
-    }
-
-    /// Pobiera brakujące logotypy serwisów (wybiera podstawowy wariant, np. „Netflix”,
-    /// a nie „Netflix Standard with Ads”).
-    private func saveServiceLogos() async {
-        guard let directory = PicksStore.logosDirectory else { return }
-        try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        let missing = StreamingService.allCases.filter {
-            !FileManager.default.fileExists(atPath: directory.appendingPathComponent($0.logoFileName).path)
-        }
-        guard !missing.isEmpty, let logos = try? await tmdb.providerLogosPL() else { return }
-        for service in missing {
-            let candidates = logos.filter { service.matches(providerName: $0.key) }
-            guard let path = candidates.min(by: { $0.key.count < $1.key.count })?.value,
-                  let data = try? await tmdb.image(path, size: "w154")
-            else { continue }
-            try? data.write(to: directory.appendingPathComponent(service.logoFileName), options: .atomic)
-        }
     }
 
     private static func googleURL(_ query: String) -> URL? {

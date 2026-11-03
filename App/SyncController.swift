@@ -66,6 +66,7 @@ final class SyncController: ObservableObject {
         deskObserver = DeskObserver { [weak self] in self?.reloadFromStore() }
 
         Task {
+            await refreshIcons()
             await checkFilmweb()
             await syncIfDue()
         }
@@ -241,6 +242,21 @@ final class SyncController: ObservableObject {
             try? await Task.sleep(for: .seconds(delay))
             guard !Task.isCancelled else { return }
             await self?.syncIfDue()
+        }
+    }
+
+    // MARK: - Ikony
+
+    /// Logotypy serwisów i favikony linków — od razu, bez czekania na nocną synchronizację.
+    func refreshIcons() async {
+        var changed = await IconFetcher.refreshFavicons(for: LinkStore.load())
+        let key = tmdbCredential.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !key.isEmpty, await IconFetcher.refreshServiceLogos(tmdb: TMDBClient(credential: key)) {
+            changed = true
+        }
+        if changed {
+            objectWillChange.send()
+            WidgetCenter.shared.reloadAllTimelines()
         }
     }
 

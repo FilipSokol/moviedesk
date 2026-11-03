@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 import WidgetKit
 
@@ -168,8 +169,21 @@ private struct PickCard: View {
     @ViewBuilder
     private var linked: some View {
         if let destination {
-            Link(destination: destination) { content }
+            if showsDetailsOnHover {
+                // W aplikacji: zwykły przycisk. `Link` na macOS zgniata zawartość do
+                // minimalnego rozmiaru (plakat stawał się kropką) i barwi tekst na niebiesko.
+                Button {
+                    NSWorkspace.shared.open(destination)
+                } label: {
+                    content
+                }
+                .buttonStyle(.plain)
                 .accessibilityLabel("\(pick.title), \(pick.destinationName)")
+            } else {
+                // W widgecie przyciski z akcją nie działają — tylko `Link`.
+                Link(destination: destination) { content }
+                    .accessibilityLabel("\(pick.title), \(pick.destinationName)")
+            }
         } else {
             content
         }
@@ -184,6 +198,8 @@ private struct PickCard: View {
                 .truncationMode(.tail)
                 .foregroundStyle(.primary)
         }
+        .frame(maxWidth: .infinity)
+        .contentShape(Rectangle())
     }
 }
 
@@ -196,6 +212,7 @@ struct PickPoster: View {
     var body: some View {
         let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
         Color.clear
+            .frame(maxWidth: .infinity)
             .aspectRatio(2.0 / 3.0, contentMode: .fit)
             .overlay {
                 if let image = ImageStore.poster(for: pick, maxPixel: maxPixel) {
