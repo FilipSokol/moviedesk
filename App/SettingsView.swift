@@ -62,6 +62,14 @@ struct SettingsView: View {
             }
 
             Section {
+                TextField("Imię w narzędniku (opcjonalnie)", text: $sync.partnerName, prompt: Text("np. Asią — jak w „Z Asią”"))
+            } header: {
+                Text("Wieczór we dwoje")
+            } footer: {
+                Text("Scenariusze „We dwoje” pomijają horrory i bardzo krwawe filmy, obniżają ocenę akcji i przemocy, a wyżej stawiają love story, dobre dramaty i komedie. Wpisz imię tak, jak brzmi po „z” (np. „Asią”), a scenariusz będzie się nazywał „Z Asią”. Imię zostaje tylko na tym Macu.")
+            }
+
+            Section {
                 let detected = StreamingService.detected(in: links.links)
                 if detected.isEmpty {
                     Text("Brak — dodaj link do serwisu VOD w zakładce „Linki”.")
@@ -129,7 +137,7 @@ private struct HiddenAndSavedSection: View {
                 HStack {
                     Label(pick.title, systemImage: "bookmark.fill")
                     Spacer()
-                    Text(pick.service.displayName).foregroundStyle(.secondary)
+                    Text(pick.destinationName).foregroundStyle(.secondary)
                     Button("Usuń") { sync.setSaved(pick, false) }
                         .buttonStyle(.borderless)
                 }

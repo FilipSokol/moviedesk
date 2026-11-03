@@ -156,32 +156,38 @@ struct UndoPill: View {
 
 // MARK: - Informacje o tytule
 
-/// „▶ Netflix” — otwiera tytuł w serwisie.
+/// „▶ Netflix” — otwiera tytuł w serwisie; „🔍 Google” — gdy tytułu nie ma w Twoich serwisach
+/// (do kupienia albo do znalezienia gdzie indziej).
 struct ServiceChip: View {
     let pick: Pick
     var height: CGFloat = 24
 
     var body: some View {
         let label = HStack(spacing: 4) {
-            Image(systemName: "play.fill")
+            Image(systemName: pick.service == nil ? (pick.resolvedScenario == .toBuy ? "bag.fill" : "magnifyingglass") : "play.fill")
                 .font(.system(size: height * 0.38, weight: .bold))
-            Text(pick.service.displayName)
+            Text(chipText)
                 .font(.system(size: height * 0.44, weight: .semibold, design: .rounded))
                 .lineLimit(1)
         }
         .foregroundStyle(.white)
         .padding(.horizontal, height * 0.45)
         .frame(height: height)
-        .background(Capsule().fill(pick.service.tint.gradient))
+        .background(Capsule().fill(pick.tint.gradient))
         .overlay(Capsule().strokeBorder(Color.white.opacity(0.35), lineWidth: 0.5))
         .widgetAccentable()
 
         if let url = DeepLink.url(for: pick.openURL) {
             Link(destination: url) { label }
-                .accessibilityLabel("Obejrzyj w \(pick.service.displayName)")
+                .accessibilityLabel(pick.service.map { "Obejrzyj w \($0.displayName)" } ?? "Szukaj w Google")
         } else {
             label
         }
+    }
+
+    private var chipText: String {
+        if let service = pick.service { return service.displayName }
+        return pick.resolvedScenario == .toBuy ? "Kup" : "Szukaj"
     }
 }
 
@@ -221,13 +227,62 @@ struct PosterThumb: View {
     }
 }
 
+// MARK: - Scenariusz
+
+/// Przycisk scenariusza: kapsułka z nazwą albo samo kółko z symbolem.
+/// Kliknięcie przełącza na następny scenariusz, w którym są propozycje.
+struct ScenarioButton: View {
+    let entry: DeskEntry
+    var compact = false
+    var size: CGFloat = 24
+
+    var body: some View {
+        let label = Group {
+            if compact {
+                ActionCircle(symbol: entry.scenario.symbol, label: "Scenariusz: \(entry.scenario.title)", size: size)
+                    .contentTransition(.symbolEffect(.replace))
+            } else {
+                HStack(spacing: 5) {
+                    Image(systemName: entry.scenario.symbol)
+                        .contentTransition(.symbolEffect(.replace))
+                    Text(entry.scenario.title)
+                        .lineLimit(1)
+                        .contentTransition(.interpolate)
+                    if entry.canSwitchScenario {
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: size * 0.32, weight: .bold))
+                            .opacity(0.6)
+                    }
+                }
+                .font(.system(size: size * 0.46, weight: .semibold, design: .rounded))
+                .padding(.horizontal, size * 0.4)
+                .frame(height: size)
+                .background(Capsule().fill(Color.white.opacity(0.14)))
+                .overlay(Capsule().strokeBorder(Color.white.opacity(0.32), lineWidth: 0.5))
+                .widgetAccentable()
+                .accessibilityLabel("Scenariusz: \(entry.scenario.title)")
+            }
+        }
+        .animation(.snappy, value: entry.scenario)
+
+        if entry.canSwitchScenario {
+            Button(intent: CycleScenarioIntent(lane: entry.lane)) { label }
+                .buttonStyle(.plain)
+        } else {
+            label
+        }
+    }
+}
+
 // MARK: - Stany
 
 struct StatusView: View {
     let status: DeskEntry.Status
+    /// Gdy podany i scenariusz jest pusty — pokazuje też przycisk zmiany scenariusza.
+    var entry: DeskEntry? = nil
 
     var body: some View {
-        VStack(spacing: 6) {
+        VStack(spacing: 8) {
             Image(systemName: symbol)
                 .font(.system(size: 22, weight: .medium))
                 .widgetAccentable()
@@ -235,6 +290,9 @@ struct StatusView: View {
                 .font(.system(size: 11, weight: .medium, design: .rounded))
                 .multilineTextAlignment(.center)
                 .foregroundStyle(.secondary)
+            if status == .filteredEmpty, let entry, entry.canSwitchScenario {
+                ScenarioButton(entry: entry, size: 24)
+            }
         }
         .padding()
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -251,7 +309,12 @@ struct StatusView: View {
     private var message: String {
         switch status {
         case .noAppGroup: "Widget nie widzi danych MovieDesk.\nSprawdź Team ID w konfiguracji."
-        case .filteredEmpty: "Brak tytułów dla tych ustawień.\nZmień je w „Edytuj widżet”."
+        case .filteredEmpty:
+            if let entry {
+                "Brak propozycji w scenariuszu\n„\(entry.scenario.title)” dla tych ustawień."
+            } else {
+                "Brak tytułów dla tych ustawień.\nZmień je w „Edytuj widżet”."
+            }
         default: "Propozycje pojawią się\npo synchronizacji w MovieDesk."
         }
     }

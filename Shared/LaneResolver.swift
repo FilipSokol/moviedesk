@@ -3,8 +3,9 @@ import Foundation
 /// Czysta logika „co pokazuje pas”. Bez plików i bez sieci — ten sam wynik w widgecie,
 /// w intencji i w aplikacji, więc wszyscy widzą to samo.
 enum LaneResolver {
-    /// Tytuły, które ten pas może pokazać: pula + zapisane spoza puli, bez ukrytych, po filtrze.
-    static func eligible(snapshot: PicksSnapshot, state: DeskState, filter: PickFilter) -> [Pick] {
+    /// Tytuły, które pas może pokazać w danym scenariuszu: pula + zapisane spoza puli,
+    /// bez ukrytych, po filtrze, bez powtórzeń (ten sam film bywa w kilku scenariuszach).
+    static func eligible(snapshot: PicksSnapshot, state: DeskState, filter: PickFilter, scenario: Scenario) -> [Pick] {
         var pool = snapshot.picks
         let inPool = Set(pool.map(\.id))
         pool += state.saved.values
@@ -12,7 +13,17 @@ enum LaneResolver {
             .map(\.pick)
             .filter { !inPool.contains($0.id) }
         let savedIDs = state.savedIDs
-        return pool.filter { state.dismissed[$0.id] == nil && filter.matches($0, savedIDs: savedIDs) }
+        var seen = Set<String>()
+        return pool.filter {
+            state.dismissed[$0.id] == nil
+                && filter.matches($0, savedIDs: savedIDs, scenario: scenario)
+                && seen.insert($0.id).inserted
+        }
+    }
+
+    /// Scenariusze, w których ten pas ma cokolwiek do pokazania.
+    static func availableScenarios(snapshot: PicksSnapshot, state: DeskState, filter: PickFilter) -> [Scenario] {
+        Scenario.allCases.filter { !eligible(snapshot: snapshot, state: state, filter: filter, scenario: $0).isEmpty }
     }
 
     /// Doprowadza zapisany stan pasa do zgodności z aktualną pulą. Nowa pula → pas od nowa
@@ -114,15 +125,54 @@ enum DeskActions {
     private static func update(_ lane: DeskLane, _ change: (inout LaneState, [String], inout DeskState, PicksSnapshot) -> Void) {
         let snapshot = PicksStore.load()
         StateStore.mutate { state in
-            let ids = LaneResolver.eligible(snapshot: snapshot, state: state, filter: lane.filter).map(\.id)
+            let scenario = state.scenario(for: lane)
+            let ids = LaneResolver.eligible(snapshot: snapshot, state: state, filter: lane.filter, scenario: scenario).map(\.id)
             var laneState = LaneResolver.materialize(
-                state.lanes[lane.key], ids: ids, snapshotID: snapshot.generatedAt, kind: lane.kind
+                state.lanes[lane.trackKey(scenario)], ids: ids, snapshotID: snapshot.generatedAt, kind: lane.kind
             )
             change(&laneState, ids, &state, snapshot)
             laneState.revision += 1
-            state.lanes[lane.key] = laneState
+            state.lanes[lane.trackKey(scenario)] = laneState
         }
         DeskNotifier.post()
+    }
+
+    /// Przełącza na następny scenariusz, w którym jest coś do pokazania.
+    static func cycleScenario(_ lane: DeskLane) {
+        let snapshot = PicksStore.load()
+        StateStore.mutate { state in
+            let current = state.scenario(for: lane)
+            let available = LaneResolver.availableScenarios(snapshot: snapshot, state: state, filter: lane.filter)
+            var candidate = current.next
+            for _ in 0..<Scenario.allCases.count {
+                if available.contains(candidate) || available.isEmpty { break }
+                candidate = candidate.next
+            }
+            switchScenario(&state, lane: lane, to: candidate, snapshot: snapshot)
+        }
+        DeskNotifier.post()
+    }
+
+    static func setScenario(_ lane: DeskLane, _ scenario: Scenario) {
+        let snapshot = PicksStore.load()
+        StateStore.mutate { state in
+            switchScenario(&state, lane: lane, to: scenario, snapshot: snapshot)
+        }
+        DeskNotifier.post()
+    }
+
+    private static func switchScenario(_ state: inout DeskState, lane: DeskLane, to scenario: Scenario, snapshot: PicksSnapshot) {
+        var scenarios = state.scenarios ?? [:]
+        scenarios[lane.key] = scenario
+        state.scenarios = scenarios
+        // Zdarzenie w pasie nowego scenariusza — plakaty wejdą z rozmyciem zamiast przesunięcia.
+        let ids = LaneResolver.eligible(snapshot: snapshot, state: state, filter: lane.filter, scenario: scenario).map(\.id)
+        var laneState = LaneResolver.materialize(
+            state.lanes[lane.trackKey(scenario)], ids: ids, snapshotID: snapshot.generatedAt, kind: lane.kind
+        )
+        laneState.event = LaneEvent(kind: .scenario, slot: nil, pickID: nil, at: .now)
+        laneState.revision += 1
+        state.lanes[lane.trackKey(scenario)] = laneState
     }
 
     static func next(_ lane: DeskLane, slot: Int, pickID: String) {
@@ -149,7 +199,8 @@ enum DeskActions {
         update(lane) { laneState, _, state, snapshot in
             state.dismissed[pickID] = Dismissal(reason: reason, at: .now)
             state.saved[pickID] = nil
-            let ids = LaneResolver.eligible(snapshot: snapshot, state: state, filter: lane.filter).map(\.id)
+            let scenario = state.scenario(for: lane)
+            let ids = LaneResolver.eligible(snapshot: snapshot, state: state, filter: lane.filter, scenario: scenario).map(\.id)
             laneState = LaneResolver.materialize(laneState, ids: ids, snapshotID: snapshot.generatedAt, kind: lane.kind)
             laneState.event = LaneEvent(kind: .hide, slot: slot, pickID: pickID, at: .now)
         }
@@ -178,7 +229,7 @@ enum DeskActions {
         let snapshot = PicksStore.load()
         StateStore.mutate { state in
             if isSaved {
-                guard let pick = snapshot.picks.first(where: { $0.id == pickID }) ?? state.saved[pickID]?.pick else { return }
+                guard let pick = state.saved[pickID]?.pick ?? snapshot.picks.first(where: { $0.id == pickID }) else { return }
                 state.saved[pickID] = SavedPick(pick: pick, at: .now)
             } else {
                 state.saved[pickID] = nil

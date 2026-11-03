@@ -25,6 +25,9 @@ struct DeskEntry: TimelineEntry {
     var tapCounter = 0
     var links: [QuickLink] = []
     var snapshotDate: Date = .distantPast
+    var scenario: Scenario = .forMe
+    /// Czy przycisk scenariusza ma dokąd przełączyć.
+    var canSwitchScenario = false
 
     var hero: Pick? { slots.first }
 
@@ -62,7 +65,12 @@ extension DeskEntry {
             entry.status = .noData
             return entry
         }
-        let eligible = LaneResolver.eligible(snapshot: snapshot, state: state, filter: filter)
+        let scenario = state.scenario(for: lane)
+        let available = LaneResolver.availableScenarios(snapshot: snapshot, state: state, filter: filter)
+        entry.scenario = scenario
+        entry.canSwitchScenario = available.contains { $0 != scenario }
+
+        let eligible = LaneResolver.eligible(snapshot: snapshot, state: state, filter: filter, scenario: scenario)
         guard !eligible.isEmpty else {
             entry.status = .filteredEmpty
             return entry
@@ -70,7 +78,7 @@ extension DeskEntry {
 
         let ids = eligible.map(\.id)
         let laneState = LaneResolver.materialize(
-            state.lanes[lane.key], ids: ids, snapshotID: snapshot.generatedAt, kind: kind
+            state.lanes[lane.trackKey(scenario)], ids: ids, snapshotID: snapshot.generatedAt, kind: kind
         )
         let byID = Dictionary(eligible.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
         entry.slots = laneState.slots.compactMap { byID[$0] }
@@ -93,7 +101,8 @@ extension DeskEntry {
             total: Pick.samples.count,
             canAdvance: true,
             links: QuickLink.defaults,
-            snapshotDate: .now
+            snapshotDate: .now,
+            canSwitchScenario: true
         )
     }
 }

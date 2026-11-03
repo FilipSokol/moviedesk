@@ -49,10 +49,14 @@ struct PickFilter: Hashable {
     var media: MediaFilter = .all
     var source: SourceFilter = .all
     var service: ServiceFilter = .all
+    /// Scenariusz, od którego widget startuje (przycisk w widgecie go zmienia).
+    var scenario: Scenario = .forMe
 
     static let all = PickFilter()
 
-    func matches(_ pick: Pick, savedIDs: Set<String>) -> Bool {
+    /// Czy tytuł pasuje do filtra w danym scenariuszu. Zapisane pokazujemy ze wszystkich scenariuszy.
+    func matches(_ pick: Pick, savedIDs: Set<String>, scenario active: Scenario) -> Bool {
+        if source != .saved, pick.resolvedScenario != active { return false }
         switch media {
         case .all: break
         case .films: guard pick.media == .film else { return false }
@@ -116,7 +120,13 @@ struct DeskLane: Hashable {
     static let panel = DeskLane(kind: .shelf, filter: .all)
 
     var key: String {
-        [kind.rawValue, filter.media.rawValue, filter.source.rawValue, filter.service.rawValue].joined(separator: "|")
+        [kind.rawValue, filter.media.rawValue, filter.source.rawValue, filter.service.rawValue, filter.scenario.rawValue]
+            .joined(separator: "|")
+    }
+
+    /// Klucz stanu pasa w danym scenariuszu — każdy scenariusz pamięta swoją pozycję.
+    func trackKey(_ scenario: Scenario) -> String {
+        key + "#" + scenario.rawValue
     }
 
     init(kind: DeskKind, filter: PickFilter) {
@@ -126,12 +136,13 @@ struct DeskLane: Hashable {
 
     init?(key: String) {
         let parts = key.split(separator: "|").map(String.init)
-        guard parts.count == 4,
+        guard parts.count == 4 || parts.count == 5,
               let kind = DeskKind(rawValue: parts[0]),
               let media = MediaFilter(rawValue: parts[1]),
               let source = SourceFilter(rawValue: parts[2]),
               let service = ServiceFilter(rawValue: parts[3])
         else { return nil }
-        self.init(kind: kind, filter: PickFilter(media: media, source: source, service: service))
+        let scenario = parts.count == 5 ? Scenario(rawValue: parts[4]) ?? .forMe : .forMe
+        self.init(kind: kind, filter: PickFilter(media: media, source: source, service: service, scenario: scenario))
     }
 }

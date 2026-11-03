@@ -28,6 +28,11 @@ struct TasteProfile {
     /// Ocena „ulubiona”: co najmniej 8, a przy wysokiej średniej — średnia + 1.
     var lovedThreshold: Int { min(9, max(8, Int((meanRating + 1).rounded()))) }
 
+    /// Gatunki, które lubisz najbardziej (powyżej swojej średniej).
+    func topGenres(_ count: Int) -> [Int] {
+        genreAffinity.filter { $0.value > 0 }.sorted { $0.value > $1.value }.prefix(count).map(\.key)
+    }
+
     /// Średnie dopasowanie gatunków tytułu do Twojego gustu (zwykle od -1 do 1).
     func affinity(genres: [Int]) -> Double {
         guard !genres.isEmpty else { return 0 }

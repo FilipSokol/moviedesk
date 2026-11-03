@@ -23,6 +23,7 @@ targets:
   MovieDesk:
     type: application
     platform: macOS
+    scheme: {}
     preBuildScripts:
       - name: Sprawdź Team ID
         basedOnDependencyAnalysis: false

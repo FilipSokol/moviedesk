@@ -12,7 +12,31 @@ gustu z Filmwebu i dostępne w Twoich serwisach VOD, do tego skróty do stron.
 | **Wieczór** | bardzo duży | Propozycja na wieczór na całym kadrze + kolejka „Dalej” z 4 tytułami. |
 | **Skróty** | mały, średni | Same linki, większe i z nazwami. |
 
-Każdy widget z propozycjami ma ustawienia („Edytuj widżet”): **Rodzaj** (filmy / seriale),
+## Scenariusze
+
+Przycisk scenariusza (♥ / 👤 / 💿 w widgecie, kapsułki w panelu) przełącza, czego szukamy:
+
+| Scenariusz | Co pokazuje | Link prowadzi do |
+|---|---|---|
+| **Dla mnie** | Twój gust: nowe tytuły, z listy „Chcę zobaczyć” i do powtórki — tylko na Twoich serwisach VOD | serwisu VOD |
+| **Do kupienia** | nowe filmy (ostatnie 2 lata) w Twoich ulubionych gatunkach, które mają już wydanie cyfrowe lub płytowe (Blu-ray/DVD), więc są w dobrej jakości | Google („tytuł rok Blu-ray”) |
+| **We dwoje · VOD** | filmy na wspólny wieczór: bez horrorów i bardzo krwawych filmów, mniej akcji i przemocy, więcej love story i dobrych dramatów/komedii; tylko na Twoich serwisach | serwisu VOD |
+| **We dwoje · wszystkie** | to samo, ale bez ograniczenia do serwisów | serwisu, a gdy filmu w nich nie ma — Google („gdzie obejrzeć”) |
+
+Szczegóły i decyzje:
+- Przemoc nie wyklucza filmu od razu (przykład: „Django” — wciąga, ale brutalne), tylko obniża
+  ocenę; odpadają filmy z wieloma „krwawymi” słowami kluczowymi TMDB (gore, tortury, splatter…)
+  i każdy horror. Reguły są w `App/PartnerProfile.swift`.
+- W scenariuszach „We dwoje” co czwarty tytuł to film, który znasz i oceniłeś wysoko
+  („Znasz i lubisz”) — do pokazania jej; reszta to filmy, których jeszcze nie oceniłeś.
+- Scenariusze „We dwoje” i „Do kupienia” to tylko filmy (bez seriali).
+- Przycisk pomija scenariusze, w których akurat nic nie ma (np. „We dwoje · VOD” bez
+  linków do serwisów). Bez serwisów VOD działają „Do kupienia” i „We dwoje · wszystkie”.
+- Każdy scenariusz pamięta, gdzie skończyłeś przewijać. Ukrycie tytułu działa we wszystkich.
+- W ustawieniach możesz wpisać imię (w narzędniku, np. „Asią”) — scenariusz nazwie się „Z Asią”.
+
+Każdy widget z propozycjami ma ustawienia („Edytuj widżet”): **Scenariusz na start**,
+**Rodzaj** (filmy / seriale),
 **Źródło** (w Twoim guście / z listy „Chcę zobaczyć” / do powtórki / zapisane) i **Serwis**.
 Widgety o tych samych ustawieniach przewijają się razem; różne ustawienia — niezależnie.
 
@@ -70,7 +94,23 @@ o ponowne zalogowanie.
 - darmowy klucz API TMDB: themoviedb.org → Ustawienia → API
 - opcjonalnie darmowy klucz OMDb (oceny IMDb): omdbapi.com → API Key
 
-## Uruchomienie
+## Instalacja bez Xcode na co dzień
+
+Raz skonfiguruj Team ID (krok 1 niżej), potem:
+
+```bash
+./Scripts/install.sh
+```
+
+Skrypt generuje projekt, buduje wersję Release, instaluje `MovieDesk.app` w `/Applications`
+i ją uruchamia. W ustawieniach włącz **Uruchamiaj przy logowaniu** — od tej pory aplikacja
+startuje sama, a dane odświeżają się co noc bez Twojego udziału. Skrypt uruchamiasz
+ponownie tylko po zmianach w kodzie (`./Scripts/install.sh --pull` pobierze je i zbuduje).
+
+Uwaga: przy darmowym koncie Apple ID podpis deweloperski może po jakimś czasie wygasnąć —
+wtedy wystarczy jeszcze raz uruchomić skrypt.
+
+## Uruchomienie (z Xcode, do pracy nad kodem)
 
 1. Utwórz lokalną konfigurację i wpisz w niej swój Team ID:
 
@@ -85,7 +125,8 @@ o ponowne zalogowanie.
    ```
 
 3. Uruchom schemat **MovieDesk** (⌘R). W pasku menu pojawi się ikona ▶︎.
-4. Panel → **Ustawienia** → **Rekomendacje**: **Zaloguj się…** do Filmwebu, wklej klucz
+4. Panel → **Ustawienia** → **Rekomendacje**: **Zaloguj się…** do Filmwebu (logowanie przez
+   Google otwiera osobne okienko; jeśli coś utknie, przycisk ↺ zaczyna od nowa), wklej klucz
    TMDB (opcjonalnie OMDb), kliknij **Synchronizuj teraz**. Włącz **Uruchamiaj przy logowaniu**,
    żeby nocna synchronizacja działała bez pamiętania o aplikacji.
 5. Dodaj widgety: prawy klik na pulpicie → **Edytuj widżety…** → „MovieDesk”.

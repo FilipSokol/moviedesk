@@ -1,4 +1,4 @@
-import Foundation
+import SwiftUI
 
 struct Rating: Codable, Hashable, Sendable {
     enum Source: String, Codable, Sendable {
@@ -55,7 +55,9 @@ struct Pick: Codable, Hashable, Identifiable, Sendable {
     var title: String
     var overview: String?
     var rating: Rating?
-    var service: StreamingService
+    /// Serwis VOD, w którym jest tytuł; `nil` — link prowadzi do wyszukiwarki Google
+    /// (scenariusze „Do kupienia” i „We dwoje · wszystkie”).
+    var service: StreamingService?
     var openURL: URL
     var kind: Kind
     /// Nazwa pliku plakatu w katalogu `Posters` kontenera App Group.
@@ -71,8 +73,16 @@ struct Pick: Codable, Hashable, Identifiable, Sendable {
     var backdropFile: String? = nil
     /// Tytuł, przez który trafiła ta propozycja („bo lubisz …”) — tylko dla nowych.
     var reason: String? = nil
+    /// Scenariusz, do którego należy (starsze pule: „Dla mnie”).
+    var scenario: Scenario? = nil
+    /// Krótka informacja zamiast „bo lubisz …”, np. „Na Blu-ray/DVD od marca 2025”.
+    var note: String? = nil
 
     var id: String { "\(media.rawValue)-\(tmdbID)" }
+    var resolvedScenario: Scenario { scenario ?? .forMe }
+    var tint: Color { service?.tint ?? .gray }
+    /// „Netflix” albo „Google”.
+    var destinationName: String { service?.displayName ?? "Google" }
 }
 
 struct PicksSnapshot: Codable {

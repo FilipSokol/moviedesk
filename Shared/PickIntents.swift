@@ -15,9 +15,34 @@ struct DeskConfigurationIntent: WidgetConfigurationIntent {
     @Parameter(title: "Serwis", default: .all)
     var service: ServiceFilter
 
+    @Parameter(title: "Scenariusz na start", default: .forMe)
+    var scenario: Scenario
+
     init() {}
 
-    var filter: PickFilter { PickFilter(media: media, source: source, service: service) }
+    var filter: PickFilter { PickFilter(media: media, source: source, service: service, scenario: scenario) }
+}
+
+/// Przycisk scenariusza: Dla mnie → Do kupienia → We dwoje · VOD → We dwoje · wszystkie.
+/// Pomija scenariusze, w których nie ma teraz żadnych propozycji.
+struct CycleScenarioIntent: AppIntent {
+    static let title: LocalizedStringResource = "Zmień scenariusz"
+    static var isDiscoverable: Bool { false }
+
+    @Parameter(title: "Pas") var laneKey: String
+
+    init() {}
+
+    init(lane: DeskLane) {
+        self.laneKey = lane.key
+    }
+
+    func perform() async throws -> some IntentResult {
+        if let lane = DeskLane(key: laneKey) {
+            DeskActions.cycleScenario(lane)
+        }
+        return .result()
+    }
 }
 
 /// „Inny” — zamienia jeden tytuł na kolejny.

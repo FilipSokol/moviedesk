@@ -49,8 +49,11 @@ struct RecommendationEngine {
 
     private struct Ready: Sendable {
         var candidate: Candidate
-        var service: StreamingService
+        /// `nil` — link do Google (do kupienia albo poza Twoimi serwisami).
+        var service: StreamingService?
         var openURL: URL
+        var scenario: Scenario = .forMe
+        var note: String? = nil
     }
 
     func run(library: inout Library) async throws -> PicksSnapshot {
@@ -138,7 +141,7 @@ struct RecommendationEngine {
         let profile = TasteProfile(ratings: rated.map { ($0.rating.rate, $0.ref.genres) })
         let excluded = Set(rated.map { Self.pickID($0.rating.media, $0.ref.id) }).union(excludedIDs)
         let loved = rated.filter { $0.rating.rate >= profile.lovedThreshold }
-        guard !loved.isEmpty else { throw EngineError.notEnoughRatings }
+        // Bez ulubionych „Dla mnie” będzie puste, ale pozostałe scenariusze i tak się zbudują.
 
         // 5. Nowe tytuły
         await progress("Szukanie tytułów w Twoim guście…")
@@ -241,12 +244,259 @@ struct RecommendationEngine {
             let id = Self.pickID(next.candidate.media, next.candidate.title.id)
             if usedIDs.insert(id).inserted { pool.append(next) }
         }
-        guard !pool.isEmpty else { throw EngineError.nothingAvailable }
 
-        // 10. Szczegóły, oceny i obrazki
+        // 10. Do kupienia: nowe filmy w Twoim guście, już wydane cyfrowo/na płytach
+        await progress("Szukanie nowości do kupienia…")
+        let recommendedFilms = votes.values.filter { $0.media == .film }.map { $0.title }
+        let toBuy = await buildToBuy(recommended: recommendedFilms, profile: profile, excluded: excluded)
+
+        // 11. We dwoje: bez horrorów i krwawych scen, z naciskiem na love story i dobre dramaty
+        await progress("Szukanie filmów na wieczór we dwoje…")
+        let together = await buildTogether(
+            recommended: recommendedFilms,
+            wanted: wantedCandidates.filter { $0.media == .film },
+            loved: loved.filter { $0.rating.media == .film },
+            profile: profile,
+            excluded: excluded
+        )
+
+        let everything = pool + toBuy + together.vod + together.anywhere
+        guard !everything.isEmpty else {
+            throw loved.isEmpty ? EngineError.notEnoughRatings : EngineError.nothingAvailable
+        }
+
+        // 12. Szczegóły, oceny i obrazki
         await progress("Pobieranie szczegółów, ocen i plakatów…")
-        let picks = await finalize(pool)
+        let picks = await finalize(everything)
         return PicksSnapshot(generatedAt: .now, picks: picks)
+    }
+
+    // MARK: - Scenariusz „Do kupienia”
+
+    /// Filmy z ostatnich 2 lat w Twoich ulubionych gatunkach, które mają już wydanie cyfrowe
+    /// albo płytowe (czyli są w dobrej jakości, do kupienia). Linki prowadzą do Google.
+    private func buildToBuy(recommended: [TMDBTitle], profile: TasteProfile, excluded: Set<String>) async -> [Ready] {
+        let tmdb = self.tmdb
+        let now = Date()
+        let from = Calendar.current.date(byAdding: .month, value: -24, to: now) ?? now
+        let fromYear = Calendar.current.component(.year, from: from)
+        let day = DateFormatter()
+        day.dateFormat = "yyyy-MM-dd"
+        day.locale = Locale(identifier: "en_US_POSIX")
+
+        var parameters = [
+            "primary_release_date.gte": day.string(from: from),
+            "primary_release_date.lte": day.string(from: now),
+            "vote_count.gte": "150",
+            "sort_by": "popularity.desc",
+            "with_release_type": "4|5",
+        ]
+        let genres = profile.topGenres(3)
+        if !genres.isEmpty { parameters["with_genres"] = genres.map(String.init).joined(separator: "|") }
+
+        var found: [TMDBTitle] = []
+        for page in 1...3 {
+            var query = parameters
+            query["page"] = String(page)
+            found += (try? await tmdb.discover(.film, query)) ?? []
+        }
+        let recent = recommended.filter { ($0.year ?? 0) >= fromYear }
+        let recommendedIDs = Set(recent.map(\.id))
+
+        var seen = Set<Int>()
+        let ranked = (recent + found)
+            .filter { seen.insert($0.id).inserted && !excluded.contains(Self.pickID(.film, $0.id)) }
+            .map { title in
+                (title: title, score: 1.5 * profile.affinity(genres: title.genreIDs)
+                    + 0.4 * ((title.voteAverage ?? 6.5) - 6.5)
+                    + (recommendedIDs.contains(title.id) ? 1 : 0))
+            }
+            .sorted { $0.score > $1.score }
+            .prefix(60)
+
+        let verified = await ranked.concurrentCompactMap(limit: 6) { item -> (score: Double, title: TMDBTitle, home: Date)? in
+            guard let title = try? await tmdb.details(.film, item.title.id),
+                  let home = title.homeReleaseDate,
+                  (title.voteAverage ?? 0) >= 6.3
+            else { return nil }
+            return (item.score, title, home)
+        }
+        let month = DateFormatter()
+        month.locale = Locale(identifier: "pl_PL")
+        month.dateFormat = "LLLL yyyy"
+
+        return verified
+            .sorted { $0.score > $1.score }
+            .prefix(20)
+            .compactMap { item in
+                let query = [item.title.displayTitle, item.title.year.map(String.init), "Blu-ray"]
+                    .compactMap { $0 }.joined(separator: " ")
+                guard let url = Self.googleURL(query) else { return nil }
+                return Ready(
+                    candidate: Candidate(media: .film, title: item.title, kind: .discovery, filmwebID: nil, score: item.score),
+                    service: nil,
+                    openURL: url,
+                    scenario: .toBuy,
+                    note: "Wydanie domowe: \(month.string(from: item.home))"
+                )
+            }
+    }
+
+    // MARK: - Scenariusze „We dwoje”
+
+    /// Kandydaci na wspólny wieczór: dobrze oceniane romanse/dramaty/komedie, rekomendacje
+    /// z Twoich ulubionych, Twoja lista „Chcę zobaczyć” i — w małej części — filmy, które
+    /// znasz i lubisz. Filtrowane profilem `PartnerProfile` (bez horrorów i krwawych scen).
+    /// `vod` — tylko na Twoich serwisach; `anywhere` — wszystkie (link do serwisu albo do Google).
+    private func buildTogether(
+        recommended: [TMDBTitle],
+        wanted: [Candidate],
+        loved: [(rating: RatedTitle, ref: TMDBRef)],
+        profile: TasteProfile,
+        excluded: Set<String>
+    ) async -> (vod: [Ready], anywhere: [Ready]) {
+        let tmdb = self.tmdb
+        let services = self.services
+        let partner = PartnerProfile.standard
+
+        // Źródła
+        var discovered: [TMDBTitle] = []
+        let base = [
+            "with_genres": "10749|18|35",
+            "without_genres": "27",
+            "vote_average.gte": "7",
+            "vote_count.gte": "800",
+            "sort_by": "popularity.desc",
+        ]
+        for page in [1, 2, 3, Int.random(in: 4...12)] {
+            var query = base
+            query["page"] = String(page)
+            discovered += (try? await tmdb.discover(.film, query)) ?? []
+        }
+        for page in 1...2 {
+            discovered += (try? await tmdb.discover(.film, [
+                "with_genres": "10749",
+                "without_genres": "27",
+                "vote_average.gte": "6.8",
+                "vote_count.gte": "400",
+                "sort_by": "popularity.desc",
+                "page": String(page),
+            ])) ?? []
+        }
+
+        // Nowe dla Ciebie (nieocenione, nieukryte)
+        var seen = Set<Int>()
+        var fresh: [Candidate] = []
+        for candidate in wanted where seen.insert(candidate.title.id).inserted {
+            fresh.append(Candidate(media: .film, title: candidate.title, kind: .wanted,
+                                   filmwebID: candidate.filmwebID, score: 0.5))
+        }
+        for title in recommended + discovered where seen.insert(title.id).inserted {
+            guard !excluded.contains(Self.pickID(.film, title.id)), (title.voteAverage ?? 0) >= 6.8 else { continue }
+            fresh.append(Candidate(media: .film, title: title, kind: .discovery, filmwebID: nil, score: 0))
+        }
+
+        // Wstępne sito po gatunkach i jakości
+        func preliminary(_ candidate: Candidate) -> Double? {
+            guard let partnerScore = partner.preliminary(genres: candidate.title.genreIDs) else { return nil }
+            return candidate.score + partnerScore
+                + 0.6 * profile.affinity(genres: candidate.title.genreIDs)
+                + 0.4 * ((candidate.title.voteAverage ?? 7) - 7)
+        }
+        let freshTop = fresh
+            .compactMap { candidate in preliminary(candidate).map { (candidate, $0) } }
+            .sorted { $0.1 > $1.1 }
+            .prefix(110)
+            .map { $0.0 }
+
+        // Znasz i lubisz (pokaż jej) — ocenione wysoko, nieukryte
+        let knownTop = loved
+            .filter { !excludedIDs.contains(Self.pickID(.film, $0.ref.id)) }
+            .filter { partner.preliminary(genres: $0.ref.genres) != nil }
+            .sorted { $0.rating.rate > $1.rating.rate }
+            .prefix(30)
+
+        // Szczegóły ze słowami kluczowymi → pełny profil (krwawe odpadają)
+        let freshScored = await freshTop.concurrentCompactMap(limit: 6) { candidate -> Candidate? in
+            guard let title = try? await tmdb.details(.film, candidate.title.id),
+                  let partnerScore = partner.score(genres: title.genreIDs, keywords: title.keywordNames)
+            else { return nil }
+            var scored = candidate
+            scored.title = title
+            scored.score = candidate.score + partnerScore
+                + 0.6 * profile.affinity(genres: title.genreIDs)
+                + 0.4 * ((title.voteAverage ?? 7) - 7)
+                + Double.random(in: 0...0.3)
+            return scored
+        }
+        let knownScored = await knownTop.concurrentCompactMap(limit: 6) { entry -> Candidate? in
+            guard let title = try? await tmdb.details(.film, entry.ref.id),
+                  let partnerScore = partner.score(genres: title.genreIDs, keywords: title.keywordNames)
+            else { return nil }
+            return Candidate(media: .film, title: title, kind: .rewatch, filmwebID: entry.rating.filmwebID,
+                             score: partnerScore + Double(entry.rating.rate - 7) * 0.3 + Double.random(in: 0...0.3))
+        }
+
+        // Dostępność (raz dla obu scenariuszy)
+        let ranked = (freshScored.sorted { $0.score > $1.score } + knownScored.sorted { $0.score > $1.score })
+        let withProviders = await ranked.enumerated().map { (index: $0.offset, candidate: $0.element) }
+            .concurrentCompactMap(limit: 6) { item -> (index: Int, candidate: Candidate, service: StreamingService?, link: URL?)? in
+                let providers = try? await tmdb.providersPL(.film, item.candidate.title.id)
+                let service = services.first { service in
+                    providers?.names.contains(where: service.matches(providerName:)) == true
+                }
+                return (item.index, item.candidate, service, providers?.link)
+            }
+            .sorted { $0.index < $1.index }
+
+        /// Wybiera do `limit` tytułów, z czego najwyżej 25% „znasz i lubisz”.
+        func pick(_ items: [(index: Int, candidate: Candidate, service: StreamingService?, link: URL?)], limit: Int) -> [(Candidate, StreamingService?, URL?)] {
+            let maxKnown = max(1, limit / 4)
+            let freshItems = items.filter { $0.candidate.kind != .rewatch }.sorted { $0.candidate.score > $1.candidate.score }
+            let knownItems = items.filter { $0.candidate.kind == .rewatch }.sorted { $0.candidate.score > $1.candidate.score }
+            let known = Array(knownItems.prefix(maxKnown))
+            let freshPart = Array(freshItems.prefix(limit - known.count))
+            // Przeplatanie: co czwarty „znany”.
+            var result: [(Candidate, StreamingService?, URL?)] = []
+            var knownIterator = known.makeIterator()
+            for (offset, item) in freshPart.enumerated() {
+                result.append((item.candidate, item.service, item.link))
+                if offset % 3 == 2, let next = knownIterator.next() {
+                    result.append((next.candidate, next.service, next.link))
+                }
+            }
+            while let next = knownIterator.next(), result.count < limit {
+                result.append((next.candidate, next.service, next.link))
+            }
+            return result
+        }
+
+        let vodItems = pick(withProviders.filter { $0.service != nil }, limit: 20)
+        let vodIDs = Set(vodItems.map { $0.0.title.id })
+        var anywhereSource = withProviders.filter { !vodIDs.contains($0.candidate.title.id) }
+        if anywhereSource.count < 10 { anywhereSource = withProviders }
+        let anywhereItems = pick(anywhereSource, limit: 20)
+
+        let vod: [Ready] = vodItems.compactMap { candidate, service, link in
+            guard let service, let url = service.searchURL(for: candidate.title.displayTitle) ?? link else { return nil }
+            return Ready(candidate: candidate, service: service, openURL: url, scenario: .together)
+        }
+        let anywhere: [Ready] = anywhereItems.compactMap { candidate, service, link in
+            if let service, let url = service.searchURL(for: candidate.title.displayTitle) ?? link {
+                return Ready(candidate: candidate, service: service, openURL: url, scenario: .togetherAnywhere)
+            }
+            let query = [candidate.title.displayTitle, candidate.title.year.map(String.init), "gdzie obejrzeć"]
+                .compactMap { $0 }.joined(separator: " ")
+            guard let url = Self.googleURL(query) else { return nil }
+            return Ready(candidate: candidate, service: nil, openURL: url, scenario: .togetherAnywhere)
+        }
+        return (vod, anywhere)
+    }
+
+    private static func googleURL(_ query: String) -> URL? {
+        var components = URLComponents(string: "https://www.google.com/search")
+        components?.queryItems = [URLQueryItem(name: "q", value: query)]
+        return components?.url
     }
 
     // MARK: - Kroki pomocnicze
@@ -316,8 +566,10 @@ struct RecommendationEngine {
         let indexed = pool.enumerated().map { (index: $0.offset, ready: $0.element) }
         let built = await indexed.concurrentCompactMap(limit: 6) { item -> (index: Int, pick: Pick)? in
             let candidate = item.ready.candidate
-            // Szczegóły — dla nowych to pierwsze takie zapytanie; przy błędzie zostaje to, co mamy.
-            let title = (try? await tmdb.details(candidate.media, candidate.title.id)) ?? candidate.title
+            // Szczegóły — jeśli kandydat ich jeszcze nie ma; przy błędzie zostaje to, co mamy.
+            let title = candidate.title.externalIds != nil
+                ? candidate.title
+                : ((try? await tmdb.details(candidate.media, candidate.title.id)) ?? candidate.title)
 
             var pick = Pick(
                 tmdbID: title.id,
@@ -335,7 +587,9 @@ struct RecommendationEngine {
                 seasons: candidate.media == .serial ? title.numberOfSeasons : nil,
                 tagline: title.tagline?.isEmpty == false ? title.tagline : nil,
                 backdropFile: nil,
-                reason: candidate.reason
+                reason: candidate.reason,
+                scenario: item.ready.scenario,
+                note: item.ready.note
             )
 
             // Ocena

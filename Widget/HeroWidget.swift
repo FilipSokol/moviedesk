@@ -38,7 +38,7 @@ private struct HeroBackground: View {
                 .overlay {
                     LinearGradient(
                         colors: [
-                            (entry.hero?.service.tint ?? .gray).opacity(0.25),
+                            (entry.hero?.tint ?? .gray).opacity(0.25),
                             Color.black.opacity(0.45),
                         ],
                         startPoint: .topLeading, endPoint: .bottomTrailing
@@ -57,7 +57,7 @@ private struct HeroView: View {
 
     var body: some View {
         if entry.status != .ok || entry.hero == nil {
-            StatusView(status: entry.status == .ok ? .noData : entry.status)
+            StatusView(status: entry.status == .ok ? .noData : entry.status, entry: entry)
         } else if let pick = entry.hero {
             switch family {
             case .systemSmall:
@@ -83,7 +83,8 @@ private struct HeroSmall: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            HStack(alignment: .top) {
+            HStack(alignment: .top, spacing: 4) {
+                ScenarioButton(entry: entry, compact: true, size: 26)
                 KindMark(kind: pick.kind, size: 18)
                 Spacer()
                 NextButton(lane: entry.lane, slot: 0, pick: pick, size: 26, enabled: entry.canAdvance)
@@ -109,7 +110,7 @@ private struct HeroSmall: View {
     }
 
     private var smallMeta: String {
-        [pick.year.map(String.init), pick.service.displayName].compactMap { $0 }.joined(separator: " · ")
+        [pick.year.map(String.init), pick.destinationName].compactMap { $0 }.joined(separator: " · ")
     }
 }
 
@@ -126,7 +127,10 @@ private struct HeroSmallCompact: View {
                     .id(pick.id)
                     .transition(.push(from: .bottom))
                 Spacer(minLength: 0)
-                NextButton(lane: entry.lane, slot: 0, pick: pick, size: 26, enabled: entry.canAdvance)
+                VStack(spacing: 6) {
+                    NextButton(lane: entry.lane, slot: 0, pick: pick, size: 26, enabled: entry.canAdvance)
+                    ScenarioButton(entry: entry, compact: true, size: 26)
+                }
             }
             .animation(.spring(duration: 0.55, bounce: 0.2), value: pick.id)
             HeroTitle(pick: pick, size: 13, lines: 2)
@@ -159,12 +163,15 @@ private struct HeroMedium: View {
             .invalidatableContent()
 
             VStack(alignment: .leading, spacing: 3) {
-                Text(PickFormatting.reasonLine(pick))
-                    .font(.system(size: 9.5, weight: .semibold, design: .rounded))
-                    .textCase(.uppercase)
-                    .tracking(0.4)
-                    .foregroundStyle(secondary)
-                    .lineLimit(1)
+                HStack(spacing: 5) {
+                    ScenarioButton(entry: entry, compact: true, size: 18)
+                    Text(PickFormatting.reasonLine(pick))
+                        .font(.system(size: 9.5, weight: .semibold, design: .rounded))
+                        .textCase(.uppercase)
+                        .tracking(0.4)
+                        .foregroundStyle(secondary)
+                        .lineLimit(1)
+                }
                 HeroTitle(pick: pick, size: 16, lines: 2)
                     .foregroundStyle(primary)
                 Text(PickFormatting.metaLine(pick, maxGenres: 2))
@@ -220,6 +227,9 @@ private struct HeroLarge: View {
 
                 UpNextStrip(entry: entry)
                     .padding(8)
+            }
+            .overlay(alignment: .topLeading) {
+                ScenarioButton(entry: entry, size: 24).padding(8)
             }
 
             HStack(alignment: .top, spacing: 12) {

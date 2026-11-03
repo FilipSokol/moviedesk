@@ -24,7 +24,7 @@ private struct ShelfView: View {
 
     var body: some View {
         if entry.status != .ok {
-            StatusView(status: entry.status)
+            StatusView(status: entry.status, entry: entry)
         } else if family == .systemLarge {
             ShelfLarge(entry: entry)
         } else {
@@ -51,6 +51,7 @@ private struct ShelfMedium: View {
             VStack(spacing: 6) {
                 LinksGrid(links: Array(entry.links.prefix(4)), columns: 2, glyphSize: 22)
                 Spacer(minLength: 0)
+                ScenarioButton(entry: entry, compact: true, size: 26)
                 ShuffleButton(entry: entry, size: 28)
             }
             .frame(width: 52)
@@ -71,9 +72,7 @@ private struct ShelfLarge: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .firstTextBaseline, spacing: 6) {
-                Text("Na dziś")
-                    .font(.system(size: 15, weight: .semibold, design: .rounded))
-                    .widgetAccentable()
+                ScenarioButton(entry: entry, size: 24)
                 if let summary = entry.lane.filter.summary {
                     Text(summary)
                         .font(.system(size: 10, weight: .medium, design: .rounded))

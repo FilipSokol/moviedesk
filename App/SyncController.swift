@@ -71,8 +71,18 @@ final class SyncController: ObservableObject {
         }
     }
 
+    /// Wystarczy klucz TMDB — bez serwisów VOD działają scenariusze „Do kupienia”
+    /// i „We dwoje · wszystkie”.
     var isConfigured: Bool {
-        !tmdbCredential.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !services.isEmpty
+        !tmdbCredential.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    /// Imię do nazwy scenariusza „Z …” (opcjonalne, tylko na tym Macu).
+    @Published var partnerName: String = Scenario.partnerName {
+        didSet {
+            Scenario.partnerName = partnerName
+            WidgetCenter.shared.reloadAllTimelines()
+        }
     }
 
     /// Serwisy VOD rozpoznane w Twoich linkach — tylko z nich pokazujemy propozycje.
@@ -91,21 +101,28 @@ final class SyncController: ObservableObject {
         var picks: [Pick] = []
         var event: LaneEvent?
         var canAdvance = false
+        var scenario: Scenario = .forMe
+        var available: [Scenario] = []
     }
 
     var panel: PanelView {
-        let eligible = LaneResolver.eligible(snapshot: snapshot, state: state, filter: DeskLane.panel.filter)
+        let scenario = state.scenario(for: .panel)
+        let eligible = LaneResolver.eligible(snapshot: snapshot, state: state, filter: DeskLane.panel.filter, scenario: scenario)
         let ids = eligible.map(\.id)
         let lane = LaneResolver.materialize(
-            state.lanes[DeskLane.panel.key], ids: ids, snapshotID: snapshot.generatedAt, kind: .shelf
+            state.lanes[DeskLane.panel.trackKey(scenario)], ids: ids, snapshotID: snapshot.generatedAt, kind: .shelf
         )
         let byID = Dictionary(eligible.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
         return PanelView(
             picks: lane.slots.compactMap { byID[$0] },
             event: lane.event,
-            canAdvance: LaneResolver.canAdvance(ids: ids, kind: .shelf)
+            canAdvance: LaneResolver.canAdvance(ids: ids, kind: .shelf),
+            scenario: scenario,
+            available: LaneResolver.availableScenarios(snapshot: snapshot, state: state, filter: DeskLane.panel.filter)
         )
     }
+
+    func setScenario(_ scenario: Scenario) { act { DeskActions.setScenario(.panel, scenario) } }
 
     var savedPicks: [Pick] {
         state.saved.values.sorted { $0.at > $1.at }.map(\.pick)
@@ -155,7 +172,7 @@ final class SyncController: ObservableObject {
     func sync() async {
         guard !isSyncing else { return }
         guard isConfigured else {
-            lastError = "Uzupełnij klucz TMDB i dodaj link do co najmniej jednego serwisu VOD."
+            lastError = "Uzupełnij klucz TMDB w ustawieniach."
             return
         }
         guard PicksStore.containerURL != nil else {

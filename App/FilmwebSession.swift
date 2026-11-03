@@ -57,6 +57,7 @@ final class FilmwebSession: NSObject, WKNavigationDelegate {
     override private init() {
         webView = WKWebView(frame: NSRect(x: 0, y: 0, width: 1024, height: 768), configuration: Self.makeConfiguration())
         super.init()
+        webView.customUserAgent = LoginBrowser.userAgent
         webView.navigationDelegate = self
     }
 

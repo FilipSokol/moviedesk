@@ -22,7 +22,7 @@ private struct BoardView: View {
 
     var body: some View {
         if entry.status != .ok || entry.hero == nil {
-            StatusView(status: entry.status == .ok ? .noData : entry.status)
+            StatusView(status: entry.status == .ok ? .noData : entry.status, entry: entry)
         } else if let pick = entry.hero {
             HStack(spacing: 0) {
                 BoardFeature(entry: entry, pick: pick)
@@ -120,6 +120,7 @@ private struct BoardQueue: View {
                         .lineLimit(1)
                 }
                 Spacer()
+                ScenarioButton(entry: entry, size: 26)
                 ShuffleButton(entry: entry, size: 26)
             }
 

@@ -41,11 +41,24 @@ enum PickFormatting {
         return "Skończysz ok. " + end.formatted(date: .omitted, time: .shortened)
     }
 
-    /// „bo lubisz Interstellar” — tylko dla nowych propozycji.
+    /// Podpis pod tytułem: „bo lubisz Interstellar”, „Na Blu-ray/DVD od marca 2025”,
+    /// „Dla was obojga”… zależnie od scenariusza i źródła.
     static func reasonLine(_ pick: Pick) -> String {
-        if pick.kind == .discovery, let reason = pick.reason, !reason.isEmpty {
-            return "bo lubisz \(reason)"
+        if let note = pick.note, !note.isEmpty { return note }
+        switch pick.resolvedScenario {
+        case .forMe:
+            if pick.kind == .discovery, let reason = pick.reason, !reason.isEmpty {
+                return "bo lubisz \(reason)"
+            }
+            return pick.kind.label
+        case .toBuy:
+            return "Nowość do kupienia"
+        case .together, .togetherAnywhere:
+            switch pick.kind {
+            case .rewatch: return "Znasz i lubisz"
+            case .wanted: return "Z Twojej listy"
+            case .discovery: return "Dla was obojga"
+            }
         }
-        return pick.kind.label
     }
 }

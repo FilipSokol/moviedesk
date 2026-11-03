@@ -7,6 +7,23 @@ struct TMDBTitle: Decodable, Hashable, Sendable {
         let name: String?
     }
     struct ExternalIDs: Decodable, Hashable, Sendable { let imdbId: String? }
+    struct Keyword: Decodable, Hashable, Sendable { let name: String }
+    /// Filmy mają `keywords`, seriale `results`.
+    struct Keywords: Decodable, Hashable, Sendable {
+        let keywords: [Keyword]?
+        let results: [Keyword]?
+    }
+    struct ReleaseDates: Decodable, Hashable, Sendable {
+        struct Country: Decodable, Hashable, Sendable {
+            struct Release: Decodable, Hashable, Sendable {
+                let type: Int
+                let releaseDate: String?
+            }
+            let iso31661: String?
+            let releaseDates: [Release]
+        }
+        let results: [Country]
+    }
 
     let id: Int
     let title: String?
@@ -28,12 +45,30 @@ struct TMDBTitle: Decodable, Hashable, Sendable {
     let numberOfSeasons: Int?
     let tagline: String?
     let externalIds: ExternalIDs?
+    let keywords: Keywords?
+    let releaseDates: ReleaseDates?
 
     var displayTitle: String { title ?? name ?? "" }
     var year: Int? { (releaseDate ?? firstAirDate).flatMap { Int($0.prefix(4)) } }
     var genreIDs: [Int] { genreIds ?? genres?.map(\.id) ?? [] }
     var genreNames: [String] { genres?.compactMap(\.name) ?? [] }
     var runtimeMinutes: Int? { runtime ?? episodeRunTime?.first }
+    var keywordNames: [String] { (keywords?.keywords ?? keywords?.results ?? []).map(\.name) }
+
+    /// Najwcześniejsze wydanie cyfrowe (typ 4) albo płytowe (typ 5), które już się odbyło.
+    var homeReleaseDate: Date? {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        let now = Date()
+        return releaseDates?.results
+            .flatMap(\.releaseDates)
+            .filter { $0.type == 4 || $0.type == 5 }
+            .compactMap { release in
+                release.releaseDate.flatMap { formatter.date(from: $0) ?? ISO8601DateFormatter().date(from: $0) }
+            }
+            .filter { $0 <= now }
+            .min()
+    }
 }
 
 struct WatchProviders: Sendable {
@@ -65,9 +100,15 @@ struct TMDBClient: Sendable {
         return try await results("search/\(media.tmdbPath)", parameters)
     }
 
-    /// Szczegóły z identyfikatorami zewnętrznymi (IMDb) w jednym zapytaniu.
+    /// Szczegóły z IMDb, słowami kluczowymi i (dla filmów) datami wydań — w jednym zapytaniu.
     func details(_ media: MediaKind, _ id: Int) async throws -> TMDBTitle {
-        try await get("\(media.tmdbPath)/\(id)", ["append_to_response": "external_ids"])
+        let extra = media == .film ? "external_ids,keywords,release_dates" : "external_ids,keywords"
+        return try await get("\(media.tmdbPath)/\(id)", ["append_to_response": extra])
+    }
+
+    /// Odkrywanie po kryteriach (gatunki, oceny, daty…), jedna strona wyników.
+    func discover(_ media: MediaKind, _ parameters: [String: String]) async throws -> [TMDBTitle] {
+        try await results("discover/\(media.tmdbPath)", parameters)
     }
 
     func recommendations(_ media: MediaKind, _ id: Int) async throws -> [TMDBTitle] {

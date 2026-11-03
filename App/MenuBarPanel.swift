@@ -34,9 +34,13 @@ struct MenuBarPanel: View {
                 .help("Pokaż kolejne")
             }
 
+            ScenarioPicker(selection: panel.scenario, available: panel.available) { scenario in
+                withAnimation(.snappy) { sync.setScenario(scenario) }
+            }
+
             if panel.picks.isEmpty {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text(emptyMessage)
+                    Text(emptyMessage(for: panel.scenario))
                     if let error = sync.lastError {
                         Text(error).foregroundStyle(.red)
                     } else if !sync.status.isEmpty {
@@ -98,10 +102,14 @@ struct MenuBarPanel: View {
         .onAppear { sync.reloadFromStore() }
     }
 
-    private var emptyMessage: String {
-        if !sync.isConfigured { return "Uzupełnij klucz TMDB i dodaj link do serwisu VOD w ustawieniach." }
+    private func emptyMessage(for scenario: Scenario) -> String {
+        if !sync.isConfigured { return "Uzupełnij klucz TMDB w ustawieniach." }
         if case .loggedOut = sync.filmweb { return "Zaloguj się do Filmwebu w ustawieniach." }
-        return "Propozycje pojawią się po pierwszej synchronizacji."
+        if sync.lastSync == nil { return "Propozycje pojawią się po pierwszej synchronizacji." }
+        if scenario.requiresVOD && sync.services.isEmpty {
+            return "Ten scenariusz pokazuje filmy z Twoich serwisów VOD — dodaj link do serwisu w ustawieniach."
+        }
+        return "Brak propozycji w scenariuszu „\(scenario.title)”. Wybierz inny albo zsynchronizuj ponownie."
     }
 
     private func menu(slot: Int, pick: Pick) -> [PickMenuAction] {
@@ -126,6 +134,52 @@ struct MenuBarPanel: View {
     }
 }
 
+/// Cztery scenariusze jako szklane kapsułki; puste są przygaszone.
+private struct ScenarioPicker: View {
+    let selection: Scenario
+    let available: [Scenario]
+    let onSelect: (Scenario) -> Void
+
+    var body: some View {
+        GlassEffectContainer(spacing: 6) {
+            HStack(spacing: 6) {
+                ForEach(Scenario.allCases, id: \.self) { scenario in
+                    Button {
+                        onSelect(scenario)
+                    } label: {
+                        Label(scenario.shortTitle, systemImage: scenario.symbol)
+                            .labelStyle(scenario == selection ? AnyLabelStyle(.titleAndIcon) : AnyLabelStyle(.iconOnly))
+                            .font(.system(size: 11, weight: .semibold, design: .rounded))
+                            .padding(.horizontal, 9)
+                            .padding(.vertical, 5)
+                    }
+                    .buttonStyle(.plain)
+                    .glassEffect(
+                        scenario == selection ? .regular.tint(.accentColor.opacity(0.35)).interactive() : .regular.interactive(),
+                        in: Capsule()
+                    )
+                    .opacity(available.contains(scenario) || scenario == selection ? 1 : 0.45)
+                    .help(scenario.title)
+                    .accessibilityLabel(scenario.title)
+                }
+            }
+        }
+    }
+}
+
+/// Pozwala przełączać styl etykiety warunkowo.
+private struct AnyLabelStyle: LabelStyle {
+    private let make: (Configuration) -> AnyView
+
+    init<S: LabelStyle>(_ style: S) {
+        make = { AnyView(style.makeBody(configuration: $0)) }
+    }
+
+    func makeBody(configuration: Configuration) -> some View {
+        make(configuration)
+    }
+}
+
 /// Pasek zapisanych tytułów (z widgetu albo z menu plakatu).
 private struct SavedStrip: View {
     let picks: [Pick]
@@ -143,7 +197,7 @@ private struct SavedStrip: View {
                             PickPoster(pick: pick, cornerRadius: 6, maxPixel: 120, showsBadges: false)
                                 .frame(width: 34)
                         }
-                        .help("\(pick.title) · \(pick.service.displayName)")
+                        .help("\(pick.title) · \(pick.destinationName)")
                         .contextMenu {
                             Button("Usuń z zapisanych", systemImage: "bookmark.slash") {
                                 sync.setSaved(pick, false)

@@ -11,8 +11,14 @@ struct DeskState: Codable {
     var lanes: [String: LaneState] = [:]
     /// Licznik kliknięć „pokaż kolejne” — tylko rośnie, napędza obrót strzałki.
     var tapCounter = 0
+    /// Aktywny scenariusz każdego widgetu (klucz pasa). Opcjonalne, bo starsze pliki go nie mają.
+    var scenarios: [String: Scenario]? = nil
 
     var savedIDs: Set<String> { Set(saved.keys) }
+
+    func scenario(for lane: DeskLane) -> Scenario {
+        scenarios?[lane.key] ?? lane.filter.scenario
+    }
 }
 
 struct Dismissal: Codable, Hashable {
@@ -27,7 +33,7 @@ struct SavedPick: Codable, Hashable {
 }
 
 struct LaneEvent: Codable, Hashable {
-    enum Kind: String, Codable { case next, shuffle, jump, hide, undo }
+    enum Kind: String, Codable { case next, shuffle, jump, hide, undo, scenario }
     var kind: Kind
     var slot: Int?
     var pickID: String?

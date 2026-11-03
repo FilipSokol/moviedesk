@@ -10,6 +10,9 @@ enum DeskTransitions {
             return .scale(scale: 0.7).combined(with: .opacity).combined(with: .move(edge: .bottom))
         case .undo:
             return .scale(scale: 1.15).combined(with: .opacity)
+        case .scenario:
+            // Inny scenariusz — rozmycie i lekkie przybliżenie, wyraźnie inne niż „następny”.
+            return AnyTransition(.blurReplace).combined(with: .scale(scale: 0.92))
         case .next, .shuffle, .jump:
             return .push(from: .trailing).combined(with: .scale(scale: 0.9))
         case nil:
@@ -107,7 +110,7 @@ private struct PickCard: View {
     private var linked: some View {
         if let destination {
             Link(destination: destination) { content }
-                .accessibilityLabel("\(pick.title), \(pick.service.displayName)")
+                .accessibilityLabel("\(pick.title), \(pick.destinationName)")
         } else {
             content
         }
@@ -142,7 +145,7 @@ struct PickPoster: View {
                         .widgetAccentedRenderingMode(.fullColor)
                         .scaledToFill()
                 } else {
-                    PosterPlaceholder(title: pick.title, tint: pick.service.tint)
+                    PosterPlaceholder(title: pick.title, tint: pick.tint)
                 }
             }
             .overlay(alignment: .bottomLeading) {
@@ -154,7 +157,9 @@ struct PickPoster: View {
                 if showsBadges {
                     HStack(spacing: 3) {
                         KindMark(kind: pick.kind)
-                        ServiceDot(service: pick.service)
+                        if let service = pick.service {
+                            ServiceDot(service: service)
+                        }
                     }
                     .padding(4)
                 }
@@ -309,7 +314,7 @@ struct PickDetails: View {
                 if let rating = pick.rating {
                     RatingBadge(rating: rating)
                 }
-                Text("\(pick.service.displayName) · \(PickFormatting.reasonLine(pick))")
+                Text("\(pick.destinationName) · \(PickFormatting.reasonLine(pick))")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
