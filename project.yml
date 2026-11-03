@@ -93,5 +93,5 @@ targets:
           - "$(APP_GROUP_ID)"
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: "$(BUNDLE_ID_PREFIX).MovieDesk.Widget"
+        PRODUCT_BUNDLE_IDENTIFIER: "$(BUNDLE_ID_PREFIX).MovieDesk.Widgets"
         SKIP_INSTALL: YES

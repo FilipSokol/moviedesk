@@ -1,10 +1,12 @@
 import SwiftUI
 import WidgetKit
 
-/// „Na dziś” — trzy tytuły obok siebie. Nazwa rodzaju zostaje stara, żeby już postawione
-/// widgety nie zniknęły z pulpitu.
+/// „Na dziś” — trzy tytuły obok siebie.
+///
+/// Rodzaj ma nową nazwę: stary widget „MovieDeskWidget” był statyczny, a ten ma ustawienia,
+/// i macOS nie umie przenieść starych egzemplarzy („Intent configuration is required”).
 struct ShelfWidget: Widget {
-    static let kind = "MovieDeskWidget"
+    static let kind = "MovieDeskShelf"
 
     var body: some WidgetConfiguration {
         AppIntentConfiguration(kind: Self.kind, intent: DeskConfigurationIntent.self, provider: DeskProvider(kind: .shelf)) { entry in

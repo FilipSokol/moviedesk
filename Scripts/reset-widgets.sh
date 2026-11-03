@@ -41,6 +41,16 @@ registrations | while IFS= read -r line; do
   fi
 done
 
+# Kontenery starych wersji rozszerzenia (tam macOS trzyma ich zapamiętane podglądy).
+for container in "$HOME"/Library/Containers/*.MovieDesk.Widget*; do
+  [[ -d "$container" ]] || continue
+  name=$(basename "$container")
+  if [[ "$name" != "$current" ]]; then
+    echo "→ Usuwam dane starej wersji widgetu: $name"
+    rm -rf "$container" 2>/dev/null || echo "  (macOS nie pozwolił — możesz usunąć ręcznie w Finderze: $container)"
+  fi
+done
+
 # Kopie z buildów Xcode (Debug).
 rm -rf "$HOME"/Library/Developer/Xcode/DerivedData/MovieDesk-* 2>/dev/null || true
 
