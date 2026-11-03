@@ -23,7 +23,7 @@ struct DeskConfigurationIntent: WidgetConfigurationIntent {
     var filter: PickFilter { PickFilter(media: media, source: source, service: service, scenario: scenario) }
 }
 
-/// Przycisk scenariusza: Solo → Na półkę → Randka → Wspólna lista.
+/// Przycisk scenariusza: Solo → Premiery HD → Randka → Wspólna lista.
 /// Pomija scenariusze, w których nie ma teraz żadnych propozycji.
 struct CycleScenarioIntent: AppIntent {
     static let title: LocalizedStringResource = "Zmień scenariusz"

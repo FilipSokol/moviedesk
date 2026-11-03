@@ -71,7 +71,7 @@ final class SyncController: ObservableObject {
         }
     }
 
-    /// Wystarczy klucz TMDB — bez serwisów VOD działają scenariusze „Na półkę”
+    /// Wystarczy klucz TMDB — bez serwisów VOD działają scenariusze „Premiery HD”
     /// i „Wspólna lista”.
     var isConfigured: Bool {
         !tmdbCredential.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty

@@ -56,7 +56,7 @@ struct Pick: Codable, Hashable, Identifiable, Sendable {
     var overview: String?
     var rating: Rating?
     /// Serwis VOD, w którym jest tytuł; `nil` — link prowadzi do wyszukiwarki Google
-    /// (scenariusze „Na półkę” i „Wspólna lista”).
+    /// (scenariusze „Premiery HD” i „Wspólna lista”).
     var service: StreamingService?
     var openURL: URL
     var kind: Kind

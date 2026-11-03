@@ -19,7 +19,7 @@ Przycisk scenariusza w widgecie (albo kapsułki w panelu) przełącza, czego szu
 | Scenariusz | Co pokazuje | Link prowadzi do |
 |---|---|---|
 | 👤 **Solo** | Twój gust: nowe tytuły, z listy „Chcę zobaczyć” i do powtórki — na Twoich serwisach | serwisu VOD |
-| 💿 **Na półkę** | świeże filmy (ostatnie 2 lata) w Twoich ulubionych gatunkach, które mają już wydanie Blu-ray albo cyfrowe — w dobrej jakości, do kupienia | Google („tytuł rok Blu-ray”) |
+| 💿 **Premiery HD** | świeże filmy (ostatnie 2 lata) w Twoich ulubionych gatunkach, które mają już wydanie Blu-ray albo cyfrowe — w dobrej jakości, do kupienia | Google („tytuł rok Blu-ray”) |
 | ❤️ **Randka** | na wieczór we dwoje: bez horrorów i bardzo krwawych filmów, mniej akcji i przemocy, więcej love story i dobrych dramatów/komedii — do włączenia od razu na Twoich serwisach | serwisu VOD |
 | 💌 **Wspólna lista** | to samo co „Randka”, ale gdziekolwiek są dostępne | serwisu, a gdy filmu w nich nie ma — Google („gdzie obejrzeć”) |
 
@@ -29,9 +29,9 @@ Szczegóły i decyzje:
   i każdy horror. Reguły są w `App/PartnerProfile.swift`.
 - W „Randce” i „Wspólnej liście” co czwarty tytuł to film, który znasz i oceniłeś wysoko
   („Znasz i lubisz”); reszta to filmy, których jeszcze nie oceniłeś.
-- „Randka”, „Wspólna lista” i „Na półkę” to tylko filmy (bez seriali).
+- „Randka”, „Wspólna lista” i „Premiery HD” to tylko filmy (bez seriali).
 - Przycisk pomija scenariusze, w których akurat nic nie ma. Bez linków do serwisów VOD
-  działają „Na półkę” i „Wspólna lista”.
+  działają „Premiery HD” i „Wspólna lista”.
 - Każdy scenariusz pamięta, gdzie skończyłeś przewijać. Ukrycie tytułu działa we wszystkich.
 
 Każdy widget z propozycjami ma ustawienia („Edytuj widżet”): **Scenariusz na start**,

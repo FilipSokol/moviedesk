@@ -245,7 +245,7 @@ struct RecommendationEngine {
             if usedIDs.insert(id).inserted { pool.append(next) }
         }
 
-        // 10. Na półkę: nowe filmy w Twoim guście, już wydane cyfrowo/na płytach
+        // 10. Premiery HD: nowe filmy w Twoim guście, już wydane cyfrowo/na płytach
         await progress("Szukanie nowości do kupienia…")
         let recommendedFilms = votes.values.filter { $0.media == .film }.map { $0.title }
         let toBuy = await buildToBuy(recommended: recommendedFilms, profile: profile, excluded: excluded)
@@ -272,7 +272,7 @@ struct RecommendationEngine {
         return PicksSnapshot(generatedAt: .now, picks: picks)
     }
 
-    // MARK: - Scenariusz „Na półkę”
+    // MARK: - Scenariusz „Premiery HD”
 
     /// Filmy z ostatnich 2 lat w Twoich ulubionych gatunkach, które mają już wydanie cyfrowe
     /// albo płytowe (czyli są w dobrej jakości, do kupienia). Linki prowadzą do Google.

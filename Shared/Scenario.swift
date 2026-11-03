@@ -17,7 +17,7 @@ enum Scenario: String, Codable, CaseIterable, Sendable, AppEnum {
     static let typeDisplayRepresentation: TypeDisplayRepresentation = "Scenariusz"
     static let caseDisplayRepresentations: [Scenario: DisplayRepresentation] = [
         .forMe: DisplayRepresentation(title: "Solo", subtitle: "Twój gust, Twoje serwisy"),
-        .toBuy: DisplayRepresentation(title: "Na półkę", subtitle: "Świeże wydania Blu-ray i cyfrowe"),
+        .toBuy: DisplayRepresentation(title: "Premiery HD", subtitle: "Świeże filmy już na Blu-ray i w wersji cyfrowej"),
         .together: DisplayRepresentation(title: "Randka", subtitle: "We dwoje, do włączenia od razu"),
         .togetherAnywhere: DisplayRepresentation(title: "Wspólna lista", subtitle: "We dwoje, gdziekolwiek są"),
     ]
@@ -25,7 +25,7 @@ enum Scenario: String, Codable, CaseIterable, Sendable, AppEnum {
     var title: String {
         switch self {
         case .forMe: "Solo"
-        case .toBuy: "Na półkę"
+        case .toBuy: "Premiery HD"
         case .together: "Randka"
         case .togetherAnywhere: "Wspólna lista"
         }
@@ -34,7 +34,7 @@ enum Scenario: String, Codable, CaseIterable, Sendable, AppEnum {
     var subtitle: String {
         switch self {
         case .forMe: "Twój gust, Twoje serwisy"
-        case .toBuy: "Świeże wydania Blu-ray i cyfrowe"
+        case .toBuy: "Świeże filmy już na Blu-ray i w wersji cyfrowej"
         case .together: "We dwoje, do włączenia od razu"
         case .togetherAnywhere: "We dwoje, gdziekolwiek są"
         }

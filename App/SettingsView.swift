@@ -75,7 +75,7 @@ struct SettingsView: View {
             } header: {
                 Text("Scenariusze")
             } footer: {
-                Text("„Randka” i „Wspólna lista” pomijają horrory i bardzo krwawe filmy, obniżają ocenę akcji i przemocy, a wyżej stawiają love story, dobre dramaty i komedie. „Na półkę” to nowości z ostatnich 2 lat, które mają już wydanie Blu-ray albo cyfrowe — linki prowadzą do Google.")
+                Text("„Randka” i „Wspólna lista” pomijają horrory i bardzo krwawe filmy, obniżają ocenę akcji i przemocy, a wyżej stawiają love story, dobre dramaty i komedie. „Premiery HD” to nowości z ostatnich 2 lat, które mają już wydanie Blu-ray albo cyfrowe — linki prowadzą do Google.")
             }
 
             Section {
