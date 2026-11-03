@@ -62,11 +62,20 @@ struct SettingsView: View {
             }
 
             Section {
-                TextField("Imię w narzędniku (opcjonalnie)", text: $sync.partnerName, prompt: Text("np. Asią — jak w „Z Asią”"))
+                ForEach(Scenario.allCases, id: \.self) { scenario in
+                    Label {
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text(scenario.title)
+                            Text(scenario.subtitle).font(.caption).foregroundStyle(.secondary)
+                        }
+                    } icon: {
+                        Image(systemName: scenario.symbol)
+                    }
+                }
             } header: {
-                Text("Wieczór we dwoje")
+                Text("Scenariusze")
             } footer: {
-                Text("Scenariusze „We dwoje” pomijają horrory i bardzo krwawe filmy, obniżają ocenę akcji i przemocy, a wyżej stawiają love story, dobre dramaty i komedie. Wpisz imię tak, jak brzmi po „z” (np. „Asią”), a scenariusz będzie się nazywał „Z Asią”. Imię zostaje tylko na tym Macu.")
+                Text("„Randka” i „Wspólna lista” pomijają horrory i bardzo krwawe filmy, obniżają ocenę akcji i przemocy, a wyżej stawiają love story, dobre dramaty i komedie. „Na półkę” to nowości z ostatnich 2 lat, które mają już wydanie Blu-ray albo cyfrowe — linki prowadzą do Google.")
             }
 
             Section {
@@ -92,7 +101,7 @@ struct SettingsView: View {
                     if sync.isSyncing { ProgressView().controlSize(.small) }
                     Spacer()
                     if let lastSync = sync.lastSync {
-                        Text("Ostatnio: \(lastSync.formatted(date: .abbreviated, time: .shortened))")
+                        Text("Ostatnio: \(PickFormatting.relativeDay(lastSync))")
                             .foregroundStyle(.secondary)
                     }
                 }

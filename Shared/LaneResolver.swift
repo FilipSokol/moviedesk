@@ -34,7 +34,11 @@ enum LaneResolver {
             let offset = ids.isEmpty ? 0 : kind.defaultOffset % ids.count
             let rotated = Array(ids[offset...] + ids[..<offset])
             let slots = Array(rotated.prefix(kind.capacity))
-            return LaneState(snapshotID: snapshotID, slots: slots, seen: slots, revision: stored?.revision ?? 0, event: nil)
+            return LaneState(
+                snapshotID: snapshotID, slots: slots, seen: slots,
+                revision: stored?.revision ?? 0, event: nil,
+                history: nil, flips: stored?.flips
+            )
         }
         let available = Set(ids)
         var slots: [String] = []
@@ -84,8 +88,38 @@ enum LaneResolver {
         guard current.indices.contains(slot), current[slot] == expected,
               let replacement = takeNext(&lane, ids: ids, excluding: current)
         else { return }
+        remember(&lane, current)
         lane.slots[slot] = replacement
+        turn(&lane, slots: [slot], by: 1)
         lane.event = LaneEvent(kind: .next, slot: slot, pickID: replacement, at: .now)
+    }
+
+    /// Cofa ostatnią zmianę (następny / pokaż kolejne / przeskok) — karty obracają się w tył.
+    static func back(_ lane: inout LaneState, ids: [String]) {
+        guard var history = lane.history, let previous = history.popLast() else { return }
+        lane.history = history
+        let available = Set(ids)
+        let restored = previous.filter { available.contains($0) }
+        guard !restored.isEmpty else { return }
+        let changed = restored.indices.filter { !lane.slots.indices.contains($0) || lane.slots[$0] != restored[$0] }
+        lane.slots = restored
+        turn(&lane, slots: changed, by: -1)
+        lane.event = LaneEvent(kind: .back, slot: nil, pickID: nil, at: .now)
+    }
+
+    private static func remember(_ lane: inout LaneState, _ slots: [String]) {
+        var history = lane.history ?? []
+        history.append(slots)
+        if history.count > 20 { history.removeFirst(history.count - 20) }
+        lane.history = history
+    }
+
+    static func turn(_ lane: inout LaneState, slots: [Int], by delta: Int) {
+        var flips = lane.flips ?? []
+        let needed = max(lane.slots.count, (slots.max() ?? -1) + 1)
+        while flips.count < needed { flips.append(0) }
+        for slot in slots where flips.indices.contains(slot) { flips[slot] += delta }
+        lane.flips = flips
     }
 
     /// Zamienia wszystkie widoczne tytuły.
@@ -98,13 +132,18 @@ enum LaneResolver {
             fresh.append(next)
         }
         guard !fresh.isEmpty else { return }
+        remember(&lane, old)
         lane.slots = fresh
+        turn(&lane, slots: Array(fresh.indices), by: 1)
         lane.event = LaneEvent(kind: .shuffle, slot: nil, pickID: nil, at: .now)
     }
 
     /// Przenosi wybrany tytuł z kolejki na główne miejsce.
     static func jump(_ lane: inout LaneState, ids: [String], to pickID: String) {
         guard ids.contains(pickID), lane.slots.first != pickID else { return }
+        let current = lane.slots
+        remember(&lane, current)
+        turn(&lane, slots: [0], by: 1)
         if !lane.seen.contains(pickID) { lane.seen.append(pickID) }
         if let existing = lane.slots.firstIndex(of: pickID) {
             lane.slots.swapAt(0, existing)
@@ -162,6 +201,10 @@ enum DeskActions {
     }
 
     private static func switchScenario(_ state: inout DeskState, lane: DeskLane, to scenario: Scenario, snapshot: PicksSnapshot) {
+        // Obroty bierzemy z poprzedniego scenariusza +1 — przy zmianie każda karta robi
+        // dokładnie jeden obrót, zamiast kręcić się o różnicę liczników obu scenariuszy.
+        let previous = state.scenario(for: lane)
+        let previousFlips = state.lanes[lane.trackKey(previous)]?.flips ?? []
         var scenarios = state.scenarios ?? [:]
         scenarios[lane.key] = scenario
         state.scenarios = scenarios
@@ -171,6 +214,8 @@ enum DeskActions {
             state.lanes[lane.trackKey(scenario)], ids: ids, snapshotID: snapshot.generatedAt, kind: lane.kind
         )
         laneState.event = LaneEvent(kind: .scenario, slot: nil, pickID: nil, at: .now)
+        let count = max(lane.kind.capacity, previousFlips.count)
+        laneState.flips = (0..<count).map { (previousFlips.indices.contains($0) ? previousFlips[$0] : 0) + 1 }
         laneState.revision += 1
         state.lanes[lane.trackKey(scenario)] = laneState
     }
@@ -178,6 +223,13 @@ enum DeskActions {
     static func next(_ lane: DeskLane, slot: Int, pickID: String) {
         update(lane) { laneState, ids, _, _ in
             LaneResolver.next(&laneState, ids: ids, slot: slot, expected: pickID)
+        }
+    }
+
+    static func back(_ lane: DeskLane) {
+        update(lane) { laneState, ids, state, _ in
+            LaneResolver.back(&laneState, ids: ids)
+            state.tapCounter -= 1
         }
     }
 

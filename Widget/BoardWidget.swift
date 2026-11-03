@@ -82,6 +82,7 @@ private struct BoardFeature: View {
                 }
                 HStack(spacing: 8) {
                     ServiceChip(pick: pick, height: 30)
+                    BackButton(entry: entry, size: 30)
                     SaveToggle(pick: pick, isSaved: entry.isSaved(pick), size: 30)
                     HideButton(lane: entry.lane, slot: 0, pick: pick, size: 30)
                     NextButton(lane: entry.lane, slot: 0, pick: pick, size: 30, enabled: entry.canAdvance)

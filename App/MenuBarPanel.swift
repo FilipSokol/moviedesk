@@ -25,6 +25,22 @@ struct MenuBarPanel: View {
                         .help(sync.status)
                 }
                 Button {
+                    withAnimation { sync.back() }
+                } label: {
+                    Image(systemName: "arrow.uturn.backward")
+                        .font(.system(size: 12, weight: .semibold))
+                        .frame(width: 28, height: 28)
+                        .background(Circle().fill(Color.white.opacity(0.12)))
+                        .overlay(Circle().strokeBorder(Color.white.opacity(0.3), lineWidth: 0.5))
+                        .contentShape(Circle())
+                }
+                .buttonStyle(.plain)
+                .disabled(!panel.canGoBack)
+                .opacity(panel.canGoBack ? 1 : 0.35)
+                .help("Cofnij o krok (⌘Z)")
+                .keyboardShortcut("z", modifiers: .command)
+
+                Button {
                     withAnimation { sync.shuffle() }
                 } label: {
                     ShuffleGlyph(tapCounter: sync.state.tapCounter, size: 28)
@@ -57,7 +73,8 @@ struct MenuBarPanel: View {
                     titleSize: 11,
                     posterPixels: 300,
                     showsDetailsOnHover: true,
-                    menu: menu(slot:pick:)
+                    menu: menu(slot:pick:),
+                    flips: panel.flips
                 )
             }
 
@@ -147,7 +164,7 @@ private struct ScenarioPicker: View {
                     Button {
                         onSelect(scenario)
                     } label: {
-                        Label(scenario.shortTitle, systemImage: scenario.symbol)
+                        Label(scenario.title, systemImage: scenario.symbol)
                             .labelStyle(scenario == selection ? AnyLabelStyle(.titleAndIcon) : AnyLabelStyle(.iconOnly))
                             .font(.system(size: 11, weight: .semibold, design: .rounded))
                             .padding(.horizontal, 9)
@@ -159,7 +176,7 @@ private struct ScenarioPicker: View {
                         in: Capsule()
                     )
                     .opacity(available.contains(scenario) || scenario == selection ? 1 : 0.45)
-                    .help(scenario.title)
+                    .help("\(scenario.title) — \(scenario.subtitle)")
                     .accessibilityLabel(scenario.title)
                 }
             }

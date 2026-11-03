@@ -33,12 +33,38 @@ enum PickFormatting {
         return "\(count) sezonów"
     }
 
+    /// Aplikacja jest po polsku, więc daty i godziny też — niezależnie od języka systemu.
+    static let polish = Locale(identifier: "pl_PL")
+
+    /// „22:41” — zawsze 24-godzinny zegar.
+    static func time(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.locale = polish
+        formatter.dateFormat = "HH:mm"
+        return formatter.string(from: date)
+    }
+
+    /// „dziś o 01:37”, „wczoraj o 23:10”, „3 listopada o 01:37”.
+    static func relativeDay(_ date: Date, now: Date = .now) -> String {
+        let calendar = Calendar.current
+        if calendar.isDate(date, inSameDayAs: now) { return "dziś o \(time(date))" }
+        if let yesterday = calendar.date(byAdding: .day, value: -1, to: now),
+           calendar.isDate(date, inSameDayAs: yesterday) {
+            return "wczoraj o \(time(date))"
+        }
+        let formatter = DateFormatter()
+        formatter.locale = polish
+        formatter.setLocalizedDateFormatFromTemplate(
+            calendar.isDate(date, equalTo: now, toGranularity: .year) ? "d MMMM" : "d MMMM yyyy"
+        )
+        return "\(formatter.string(from: date)) o \(time(date))"
+    }
+
     /// „Skończysz ok. 22:41” (film) albo „odc. ok. 45 min” (serial).
     static func finishText(_ pick: Pick, from date: Date) -> String? {
         guard let minutes = pick.runtimeMinutes, minutes > 0 else { return nil }
         if pick.media == .serial { return "odc. ok. \(minutes) min" }
-        let end = date.addingTimeInterval(TimeInterval(minutes * 60))
-        return "Skończysz ok. " + end.formatted(date: .omitted, time: .shortened)
+        return "Skończysz ok. " + time(date.addingTimeInterval(TimeInterval(minutes * 60)))
     }
 
     /// Podpis pod tytułem: „bo lubisz Interstellar”, „Na Blu-ray/DVD od marca 2025”,
@@ -52,7 +78,7 @@ enum PickFormatting {
             }
             return pick.kind.label
         case .toBuy:
-            return "Nowość do kupienia"
+            return "Świeże wydanie"
         case .together, .togetherAnywhere:
             switch pick.kind {
             case .rewatch: return "Znasz i lubisz"

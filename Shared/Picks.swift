@@ -26,7 +26,7 @@ struct Rating: Codable, Hashable, Sendable {
 
     /// „7,8” — po polsku, z przecinkiem.
     var formatted: String {
-        value.formatted(.number.precision(.fractionLength(1)).locale(Locale(identifier: "pl_PL")))
+        value.formatted(.number.precision(.fractionLength(1)).locale(PickFormatting.polish))
     }
 }
 
@@ -56,7 +56,7 @@ struct Pick: Codable, Hashable, Identifiable, Sendable {
     var overview: String?
     var rating: Rating?
     /// Serwis VOD, w którym jest tytuł; `nil` — link prowadzi do wyszukiwarki Google
-    /// (scenariusze „Do kupienia” i „We dwoje · wszystkie”).
+    /// (scenariusze „Na półkę” i „Wspólna lista”).
     var service: StreamingService?
     var openURL: URL
     var kind: Kind
@@ -73,7 +73,7 @@ struct Pick: Codable, Hashable, Identifiable, Sendable {
     var backdropFile: String? = nil
     /// Tytuł, przez który trafiła ta propozycja („bo lubisz …”) — tylko dla nowych.
     var reason: String? = nil
-    /// Scenariusz, do którego należy (starsze pule: „Dla mnie”).
+    /// Scenariusz, do którego należy (starsze pule: „Solo”).
     var scenario: Scenario? = nil
     /// Krótka informacja zamiast „bo lubisz …”, np. „Na Blu-ray/DVD od marca 2025”.
     var note: String? = nil
@@ -102,6 +102,10 @@ enum PicksStore {
 
     static var postersDirectory: URL? {
         containerURL?.appendingPathComponent("Posters", isDirectory: true)
+    }
+
+    static var logosDirectory: URL? {
+        containerURL?.appendingPathComponent("Logos", isDirectory: true)
     }
 
     static var backdropsDirectory: URL? {

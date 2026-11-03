@@ -141,7 +141,7 @@ struct RecommendationEngine {
         let profile = TasteProfile(ratings: rated.map { ($0.rating.rate, $0.ref.genres) })
         let excluded = Set(rated.map { Self.pickID($0.rating.media, $0.ref.id) }).union(excludedIDs)
         let loved = rated.filter { $0.rating.rate >= profile.lovedThreshold }
-        // Bez ulubionych „Dla mnie” będzie puste, ale pozostałe scenariusze i tak się zbudują.
+        // Bez ulubionych „Solo” będzie puste, ale pozostałe scenariusze i tak się zbudują.
 
         // 5. Nowe tytuły
         await progress("Szukanie tytułów w Twoim guście…")
@@ -245,12 +245,12 @@ struct RecommendationEngine {
             if usedIDs.insert(id).inserted { pool.append(next) }
         }
 
-        // 10. Do kupienia: nowe filmy w Twoim guście, już wydane cyfrowo/na płytach
+        // 10. Na półkę: nowe filmy w Twoim guście, już wydane cyfrowo/na płytach
         await progress("Szukanie nowości do kupienia…")
         let recommendedFilms = votes.values.filter { $0.media == .film }.map { $0.title }
         let toBuy = await buildToBuy(recommended: recommendedFilms, profile: profile, excluded: excluded)
 
-        // 11. We dwoje: bez horrorów i krwawych scen, z naciskiem na love story i dobre dramaty
+        // 11. Randka i Wspólna lista: bez horrorów i krwawych scen, z naciskiem na love story i dobre dramaty
         await progress("Szukanie filmów na wieczór we dwoje…")
         let together = await buildTogether(
             recommended: recommendedFilms,
@@ -265,13 +265,14 @@ struct RecommendationEngine {
             throw loved.isEmpty ? EngineError.notEnoughRatings : EngineError.nothingAvailable
         }
 
-        // 12. Szczegóły, oceny i obrazki
+        // 12. Szczegóły, oceny i obrazki (+ logotypy serwisów, raz)
         await progress("Pobieranie szczegółów, ocen i plakatów…")
         let picks = await finalize(everything)
+        await saveServiceLogos()
         return PicksSnapshot(generatedAt: .now, picks: picks)
     }
 
-    // MARK: - Scenariusz „Do kupienia”
+    // MARK: - Scenariusz „Na półkę”
 
     /// Filmy z ostatnich 2 lat w Twoich ulubionych gatunkach, które mają już wydanie cyfrowe
     /// albo płytowe (czyli są w dobrej jakości, do kupienia). Linki prowadzą do Google.
@@ -337,12 +338,12 @@ struct RecommendationEngine {
                     service: nil,
                     openURL: url,
                     scenario: .toBuy,
-                    note: "Wydanie domowe: \(month.string(from: item.home))"
+                    note: "Premiera domowa: \(month.string(from: item.home))"
                 )
             }
     }
 
-    // MARK: - Scenariusze „We dwoje”
+    // MARK: - Scenariusze „Randka” i „Wspólna lista”
 
     /// Kandydaci na wspólny wieczór: dobrze oceniane romanse/dramaty/komedie, rekomendacje
     /// z Twoich ulubionych, Twoja lista „Chcę zobaczyć” i — w małej części — filmy, które
@@ -491,6 +492,24 @@ struct RecommendationEngine {
             return Ready(candidate: candidate, service: nil, openURL: url, scenario: .togetherAnywhere)
         }
         return (vod, anywhere)
+    }
+
+    /// Pobiera brakujące logotypy serwisów (wybiera podstawowy wariant, np. „Netflix”,
+    /// a nie „Netflix Standard with Ads”).
+    private func saveServiceLogos() async {
+        guard let directory = PicksStore.logosDirectory else { return }
+        try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let missing = StreamingService.allCases.filter {
+            !FileManager.default.fileExists(atPath: directory.appendingPathComponent($0.logoFileName).path)
+        }
+        guard !missing.isEmpty, let logos = try? await tmdb.providerLogosPL() else { return }
+        for service in missing {
+            let candidates = logos.filter { service.matches(providerName: $0.key) }
+            guard let path = candidates.min(by: { $0.key.count < $1.key.count })?.value,
+                  let data = try? await tmdb.image(path, size: "w154")
+            else { continue }
+            try? data.write(to: directory.appendingPathComponent(service.logoFileName), options: .atomic)
+        }
     }
 
     private static func googleURL(_ query: String) -> URL? {

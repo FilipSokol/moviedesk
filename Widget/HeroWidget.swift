@@ -87,6 +87,7 @@ private struct HeroSmall: View {
                 ScenarioButton(entry: entry, compact: true, size: 26)
                 KindMark(kind: pick.kind, size: 18)
                 Spacer()
+                BackButton(entry: entry, size: 22)
                 NextButton(lane: entry.lane, slot: 0, pick: pick, size: 26, enabled: entry.canAdvance)
             }
             Spacer(minLength: 0)
@@ -129,7 +130,8 @@ private struct HeroSmallCompact: View {
                 Spacer(minLength: 0)
                 VStack(spacing: 6) {
                     NextButton(lane: entry.lane, slot: 0, pick: pick, size: 26, enabled: entry.canAdvance)
-                    ScenarioButton(entry: entry, compact: true, size: 26)
+                    BackButton(entry: entry, size: 22)
+                    ScenarioButton(entry: entry, compact: true, size: 22)
                 }
             }
             .animation(.spring(duration: 0.55, bounce: 0.2), value: pick.id)
@@ -153,13 +155,16 @@ private struct HeroMedium: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
-            Link(destination: DeepLink.url(for: pick.openURL) ?? DeepLink.syncURL) {
-                PosterThumb(pick: pick, maxPixel: 300, cornerRadius: 10)
+            ZStack {
+                Link(destination: DeepLink.url(for: pick.openURL) ?? DeepLink.syncURL) {
+                    PosterThumb(pick: pick, maxPixel: 300, cornerRadius: 10)
+                }
+                .id(pick.id)
+                .transition(DeskTransitions.card(for: entry.event))
             }
             .frame(width: 96)
-            .id(pick.id)
-            .transition(.push(from: .bottom).combined(with: .opacity))
-            .animation(.spring(duration: 0.55, bounce: 0.2).delay(0.05), value: pick.id)
+            .animation(DeskTransitions.slotAnimation(0), value: pick.id)
+            .modifier(CardFlip(turns: entry.flip(0), slot: 0))
             .invalidatableContent()
 
             VStack(alignment: .leading, spacing: 3) {
@@ -174,19 +179,22 @@ private struct HeroMedium: View {
                 }
                 HeroTitle(pick: pick, size: 16, lines: 2)
                     .foregroundStyle(primary)
-                Text(PickFormatting.metaLine(pick, maxGenres: 2))
-                    .font(.system(size: 10.5, design: .rounded))
-                    .foregroundStyle(secondary)
-                    .lineLimit(1)
+                HStack(spacing: 6) {
+                    if let rating = pick.rating {
+                        FullRatingBadge(rating: rating, size: 10.5, color: primary)
+                    }
+                    Text(PickFormatting.metaLine(pick, maxGenres: 1))
+                        .font(.system(size: 10.5, design: .rounded))
+                        .foregroundStyle(secondary)
+                        .lineLimit(1)
+                }
                 HeroOverview(pick: pick, size: 11, lines: 3)
                     .foregroundStyle(secondary)
                 Spacer(minLength: 0)
                 HStack(spacing: 6) {
-                    if let rating = pick.rating {
-                        FullRatingBadge(rating: rating, size: 11, color: primary)
-                    }
                     ServiceChip(pick: pick, height: 22)
                     Spacer(minLength: 0)
+                    BackButton(entry: entry, size: 24)
                     HideButton(lane: entry.lane, slot: 0, pick: pick, size: 24)
                     SaveToggle(pick: pick, isSaved: entry.isSaved(pick), size: 24)
                     NextButton(lane: entry.lane, slot: 0, pick: pick, size: 24, enabled: entry.canAdvance)
@@ -233,13 +241,16 @@ private struct HeroLarge: View {
             }
 
             HStack(alignment: .top, spacing: 12) {
-                Link(destination: DeepLink.url(for: pick.openURL) ?? DeepLink.syncURL) {
-                    PosterThumb(pick: pick, maxPixel: 260, cornerRadius: 10)
+                ZStack {
+                    Link(destination: DeepLink.url(for: pick.openURL) ?? DeepLink.syncURL) {
+                        PosterThumb(pick: pick, maxPixel: 260, cornerRadius: 10)
+                    }
+                    .id(pick.id)
+                    .transition(DeskTransitions.card(for: entry.event))
                 }
                 .frame(width: 70)
-                .id(pick.id)
-                .transition(.push(from: .bottom).combined(with: .opacity))
-                .animation(.spring(duration: 0.55, bounce: 0.2).delay(0.05), value: pick.id)
+                .animation(DeskTransitions.slotAnimation(0), value: pick.id)
+                .modifier(CardFlip(turns: entry.flip(0), slot: 0))
 
                 VStack(alignment: .leading, spacing: 4) {
                     HeroTitle(pick: pick, size: 18, lines: 2)
@@ -276,6 +287,7 @@ private struct HeroLarge: View {
             HStack(spacing: 8) {
                 ServiceChip(pick: pick, height: 26)
                 Spacer(minLength: 0)
+                BackButton(entry: entry, size: 28)
                 HideButton(lane: entry.lane, slot: 0, pick: pick, size: 28)
                 SaveToggle(pick: pick, isSaved: entry.isSaved(pick), size: 28)
                 NextButton(lane: entry.lane, slot: 0, pick: pick, size: 28, enabled: entry.canAdvance)

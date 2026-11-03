@@ -43,6 +43,7 @@ targets:
       path: App/Info.plist
       properties:
         CFBundleDisplayName: MovieDesk
+        CFBundleDevelopmentRegion: pl
         LSUIElement: true
         LSApplicationCategoryType: public.app-category.entertainment
         MDAppGroupID: "$(APP_GROUP_ID)"
@@ -75,6 +76,7 @@ targets:
       path: Widget/Info.plist
       properties:
         CFBundleDisplayName: MovieDesk
+        CFBundleDevelopmentRegion: pl
         MDAppGroupID: "$(APP_GROUP_ID)"
         NSExtension:
           NSExtensionPointIdentifier: com.apple.widgetkit-extension

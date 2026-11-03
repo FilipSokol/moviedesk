@@ -33,7 +33,7 @@ struct SavedPick: Codable, Hashable {
 }
 
 struct LaneEvent: Codable, Hashable {
-    enum Kind: String, Codable { case next, shuffle, jump, hide, undo, scenario }
+    enum Kind: String, Codable { case next, shuffle, jump, hide, undo, scenario, back }
     var kind: Kind
     var slot: Int?
     var pickID: String?
@@ -49,6 +49,19 @@ struct LaneState: Codable, Hashable {
     var seen: [String]
     var revision: Int
     var event: LaneEvent?
+    /// Poprzednie układy (do „Cofnij o krok”), najnowszy na końcu; najwyżej 20.
+    var history: [[String]]? = nil
+    /// Licznik obrotów każdego miejsca: +1 przy „następny”, −1 przy „wstecz”.
+    /// Widget obraca kartę o 360° × licznik, więc zmiana o 1 to jeden pełny obrót
+    /// (w przód albo w tył). Nie zeruje się przy nowej puli, żeby karty nie kręciły się o północy.
+    var flips: [Int]? = nil
+
+    func flip(_ slot: Int) -> Int {
+        guard let flips, flips.indices.contains(slot) else { return 0 }
+        return flips[slot]
+    }
+
+    var canGoBack: Bool { !(history ?? []).isEmpty }
 }
 
 enum StateStore {

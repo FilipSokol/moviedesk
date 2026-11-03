@@ -29,19 +29,30 @@ enum StreamingService: String, Codable, CaseIterable, Identifiable, Sendable {
         }
     }
 
+    /// Kolor marki (do tła przycisku „▶ Netflix” i zastępczej ikony bez logo).
     var tint: Color {
         switch self {
-        case .netflix: .red
-        case .hboMax: .indigo
-        case .primeVideo: .cyan
-        case .disneyPlus: .blue
-        case .skyShowtime: .purple
-        case .appleTV: .gray
-        case .canalPlus: .gray
-        case .player: .green
-        case .polsatBoxGo: .orange
+        case .netflix: Color(red: 0.898, green: 0.035, blue: 0.078)      // #E50914
+        case .hboMax: Color(red: 0.239, green: 0.137, blue: 0.839)       // #3D23D6
+        case .primeVideo: Color(red: 0.0, green: 0.659, blue: 0.882)     // #00A8E1
+        case .disneyPlus: Color(red: 0.059, green: 0.231, blue: 0.769)   // #0F3BC4
+        case .skyShowtime: Color(red: 0.553, green: 0.204, blue: 0.851)  // #8D34D9
+        case .appleTV: Color(red: 0.15, green: 0.15, blue: 0.17)
+        case .canalPlus: Color(red: 0.10, green: 0.10, blue: 0.10)
+        case .player: Color(red: 0.961, green: 0.718, blue: 0.0)         // #F5B700
+        case .polsatBoxGo: Color(red: 1.0, green: 0.42, blue: 0.0)       // #FF6B00
         }
     }
+
+    /// Kolor tekstu na tle marki.
+    var onTint: Color { self == .player ? .black : .white }
+
+    /// Logo serwisu (pobrane z TMDB podczas synchronizacji), jeśli już jest na dysku.
+    func logo(maxPixel: CGFloat) -> CGImage? {
+        ImageStore.image(logoFileName, in: PicksStore.logosDirectory, maxPixel: maxPixel)
+    }
+
+    var logoFileName: String { rawValue + ".img" }
 
     /// Domeny, po których rozpoznajemy serwis w linkach.
     private var hosts: [String] {

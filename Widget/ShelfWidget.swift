@@ -44,14 +44,18 @@ private struct ShelfMedium: View {
                 event: entry.event,
                 destination: { DeepLink.url(for: $0.openURL) },
                 titleSize: 9.5,
-                posterPixels: 260
+                posterPixels: 260,
+                flips: entry.flips
             )
             .invalidatableContent()
 
             VStack(spacing: 6) {
                 LinksGrid(links: Array(entry.links.prefix(4)), columns: 2, glyphSize: 22)
                 Spacer(minLength: 0)
-                ScenarioButton(entry: entry, compact: true, size: 26)
+                HStack(spacing: 6) {
+                    BackButton(entry: entry, size: 22)
+                    ScenarioButton(entry: entry, compact: true, size: 22)
+                }
                 ShuffleButton(entry: entry, size: 28)
             }
             .frame(width: 52)
@@ -88,6 +92,7 @@ private struct ShelfLarge: View {
                         .contentTransition(.numericText(value: Double(entry.position)))
                         .animation(.snappy, value: entry.position)
                 }
+                BackButton(entry: entry, size: 26)
                 ShuffleButton(entry: entry, size: 30)
             }
 
@@ -111,6 +116,7 @@ private struct ShelfLarge: View {
                         DeskTransitions.slotAnimation(slot),
                         value: slot < entry.slots.count ? entry.slots[slot].id : ""
                     )
+                    .modifier(CardFlip(turns: entry.flip(slot), slot: slot))
                 }
             }
 

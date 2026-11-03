@@ -85,6 +85,24 @@ struct NextButton: View {
     }
 }
 
+/// „Cofnij o krok” — wraca do tytułów sprzed ostatniego kliknięcia.
+struct BackButton: View {
+    let entry: DeskEntry
+    var size: CGFloat = 24
+
+    var body: some View {
+        if entry.canGoBack {
+            Button(intent: BackIntent(lane: entry.lane)) {
+                ActionCircle(symbol: "arrow.uturn.backward", label: "Cofnij o krok", size: size)
+            }
+            .buttonStyle(.plain)
+        } else {
+            ActionCircle(symbol: "arrow.uturn.backward", label: "Nie ma do czego wrócić", size: size)
+                .opacity(0.3)
+        }
+    }
+}
+
 struct HideButton: View {
     let lane: DeskLane
     let slot: Int
@@ -163,14 +181,18 @@ struct ServiceChip: View {
     var height: CGFloat = 24
 
     var body: some View {
-        let label = HStack(spacing: 4) {
-            Image(systemName: pick.service == nil ? (pick.resolvedScenario == .toBuy ? "bag.fill" : "magnifyingglass") : "play.fill")
-                .font(.system(size: height * 0.38, weight: .bold))
+        let label = HStack(spacing: 5) {
+            if let service = pick.service, service.logo(maxPixel: height * 3) != nil {
+                ServiceDot(service: service, size: height * 0.68)
+            } else {
+                Image(systemName: pick.service == nil ? (pick.resolvedScenario == .toBuy ? "bag.fill" : "magnifyingglass") : "play.fill")
+                    .font(.system(size: height * 0.38, weight: .bold))
+            }
             Text(chipText)
                 .font(.system(size: height * 0.44, weight: .semibold, design: .rounded))
                 .lineLimit(1)
         }
-        .foregroundStyle(.white)
+        .foregroundStyle(pick.service?.onTint ?? .white)
         .padding(.horizontal, height * 0.45)
         .frame(height: height)
         .background(Capsule().fill(pick.tint.gradient))
@@ -268,6 +290,7 @@ struct ScenarioButton: View {
         if entry.canSwitchScenario {
             Button(intent: CycleScenarioIntent(lane: entry.lane)) { label }
                 .buttonStyle(.plain)
+                .invalidatableContent()
         } else {
             label
         }

@@ -1,34 +1,90 @@
 import SwiftUI
 import WidgetKit
 
-/// Przejścia przy zmianie tytułu w miejscu. Usunięcie jest zawsze takie samo (stary widok
-/// nie wie, co kliknięto), a wejście zależy od ostatniej akcji zapisanej w pasie.
+/// Animacje zmiany tytułów — „tasowanie kart”.
+///
+/// Każde miejsce (stała tożsamość) obraca się wokół pionowej osi o 360° × licznik obrotów,
+/// z lekką perspektywą i sprężystym dobiciem; kolumny startują po kolei. W połowie obrotu
+/// karta jest bokiem do widza i wtedy podmienia się zawartość (przenikanie + skala),
+/// a po plakacie przechodzi odblask. „Wstecz” zmniejsza licznik, więc karta obraca się
+/// w drugą stronę. Wszystko to są interpolowane właściwości i wbudowane przejścia —
+/// WidgetKit odtwarza je między kolejnymi stanami widgetu.
 enum DeskTransitions {
     static func insertion(for event: LaneEvent?) -> AnyTransition {
         switch event?.kind {
         case .hide:
-            return .scale(scale: 0.7).combined(with: .opacity).combined(with: .move(edge: .bottom))
+            return .scale(scale: 0.6).combined(with: .opacity).combined(with: .move(edge: .bottom))
         case .undo:
-            return .scale(scale: 1.15).combined(with: .opacity)
+            return .scale(scale: 1.2).combined(with: .opacity)
         case .scenario:
-            // Inny scenariusz — rozmycie i lekkie przybliżenie, wyraźnie inne niż „następny”.
-            return AnyTransition(.blurReplace).combined(with: .scale(scale: 0.92))
-        case .next, .shuffle, .jump:
-            return .push(from: .trailing).combined(with: .scale(scale: 0.9))
+            return AnyTransition(.blurReplace).combined(with: .scale(scale: 0.8))
+        case .next, .shuffle, .jump, .back:
+            return .opacity.combined(with: .scale(scale: 0.82))
         case nil:
             // Nowa pula po nocnej synchronizacji.
-            return .opacity.combined(with: .scale(scale: 0.96))
+            return AnyTransition(.blurReplace).combined(with: .scale(scale: 0.95))
         }
     }
 
-    static let removal: AnyTransition = .push(from: .trailing).combined(with: .opacity)
+    static let removal: AnyTransition = .opacity.combined(with: .scale(scale: 1.12))
 
     static func card(for event: LaneEvent?) -> AnyTransition {
         .asymmetric(insertion: insertion(for: event), removal: removal)
     }
 
+    /// Kolumny po kolei: 0 / 90 / 180 ms, sprężyna z wyraźnym dobiciem.
     static func slotAnimation(_ slot: Int) -> Animation {
-        .spring(duration: 0.5, bounce: 0.18).delay(Double(slot) * 0.07)
+        .spring(duration: 0.85, bounce: 0.28).delay(Double(slot) * 0.09)
+    }
+}
+
+/// Obrót karty + odblask. Nakładane na miejsce (nie na kartę), żeby przetrwało zmianę tytułu
+/// i dało się je płynnie interpolować.
+struct CardFlip: ViewModifier {
+    let turns: Int
+    let slot: Int
+    var cornerRadius: CGFloat = 10
+    @Environment(\.widgetRenderingMode) private var renderingMode
+
+    func body(content: Content) -> some View {
+        content
+            .overlay(alignment: .top) {
+                if renderingMode == .fullColor {
+                    Sheen(phase: turns, slot: slot)
+                        .aspectRatio(2.0 / 3.0, contentMode: .fit)
+                        .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+                        .allowsHitTesting(false)
+                }
+            }
+            .rotation3DEffect(
+                .degrees(Double(turns) * 360),
+                axis: (x: 0, y: 1, z: 0),
+                anchor: .center,
+                perspective: 0.55
+            )
+            .animation(DeskTransitions.slotAnimation(slot), value: turns)
+    }
+}
+
+/// Smuga światła przesuwająca się po plakacie przy każdym obrocie
+/// (parzysty licznik — smuga po lewej, nieparzysty — po prawej, więc zawsze przelatuje).
+private struct Sheen: View {
+    let phase: Int
+    let slot: Int
+
+    var body: some View {
+        GeometryReader { geometry in
+            let width = geometry.size.width
+            LinearGradient(
+                colors: [.clear, .white.opacity(0.08), .white.opacity(0.55), .white.opacity(0.08), .clear],
+                startPoint: .leading, endPoint: .trailing
+            )
+            .frame(width: width * 0.7, height: geometry.size.height * 1.6)
+            .rotationEffect(.degrees(20))
+            .offset(x: phase.isMultiple(of: 2) ? -width * 1.3 : width * 1.3, y: -geometry.size.height * 0.3)
+            .blendMode(.plusLighter)
+            .animation(.easeInOut(duration: 0.9).delay(0.3 + Double(slot) * 0.09), value: phase)
+        }
     }
 }
 
@@ -56,6 +112,8 @@ struct PicksRow: View {
     /// Dymek z opisem po najechaniu — tylko w aplikacji, widgety nie obsługują kursora.
     var showsDetailsOnHover = false
     var menu: ((Int, Pick) -> [PickMenuAction])? = nil
+    /// Liczniki obrotów miejsc (z pasa); puste — bez obrotów.
+    var flips: [Int] = []
 
     var body: some View {
         HStack(alignment: .top, spacing: 8) {
@@ -78,6 +136,7 @@ struct PicksRow: View {
                 }
                 .frame(maxWidth: .infinity)
                 .animation(DeskTransitions.slotAnimation(slot), value: slot < picks.count ? picks[slot].id : "")
+                .modifier(CardFlip(turns: flips.indices.contains(slot) ? flips[slot] : 0, slot: slot))
             }
         }
     }
@@ -200,19 +259,32 @@ struct RatingBadge: View {
     }
 }
 
-/// Kropka serwisu z inicjałem (kolor nie jest jedynym nośnikiem informacji).
+/// Znaczek serwisu: prawdziwe logo (z TMDB), a dopóki go nie ma — inicjał w kolorze marki.
 struct ServiceDot: View {
     let service: StreamingService
-    var size: CGFloat = 14
+    var size: CGFloat = 16
 
     var body: some View {
-        Text(String(service.displayName.prefix(1)))
-            .font(.system(size: size * 0.55, weight: .heavy, design: .rounded))
-            .foregroundStyle(.white)
-            .frame(width: size, height: size)
-            .background(Circle().fill(service.tint.gradient))
-            .overlay(Circle().strokeBorder(Color.white.opacity(0.4), lineWidth: 0.5))
-            .accessibilityLabel(service.displayName)
+        let shape = RoundedRectangle(cornerRadius: size * 0.26, style: .continuous)
+        Group {
+            if let logo = service.logo(maxPixel: size * 3) {
+                Image(decorative: logo, scale: 1)
+                    .resizable()
+                    .widgetAccentedRenderingMode(.fullColor)
+                    .scaledToFill()
+            } else {
+                Text(String(service.displayName.prefix(1)))
+                    .font(.system(size: size * 0.55, weight: .heavy, design: .rounded))
+                    .foregroundStyle(service.onTint)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(service.tint)
+            }
+        }
+        .frame(width: size, height: size)
+        .clipShape(shape)
+        .overlay(shape.strokeBorder(Color.white.opacity(0.45), lineWidth: 0.5))
+        .shadow(color: .black.opacity(0.3), radius: 2, y: 1)
+        .accessibilityLabel(service.displayName)
     }
 }
 

@@ -11,8 +11,25 @@ struct LinkGlyph: View {
     @Environment(\.widgetRenderingMode) private var renderingMode
 
     var body: some View {
+        if let service = link.url.flatMap(StreamingService.detect(in:)),
+           let logo = service.logo(maxPixel: size * 3) {
+            // Link do rozpoznanego serwisu — jego prawdziwe logo zamiast inicjału.
+            Image(decorative: logo, scale: 1)
+                .resizable()
+                .widgetAccentedRenderingMode(.fullColor)
+                .scaledToFill()
+                .frame(width: size, height: size)
+                .clipShape(Circle())
+                .overlay(Circle().strokeBorder(Color.white.opacity(0.4), lineWidth: 0.75))
+                .shadow(color: .black.opacity(0.25), radius: 4, y: 2)
+        } else {
+            monogram
+        }
+    }
+
+    private var monogram: some View {
         let fullColor = renderingMode == .fullColor
-        ZStack {
+        return ZStack {
             Circle()
                 .fill(fullColor ? AnyShapeStyle(link.tint.color.gradient) : AnyShapeStyle(Color.white.opacity(0.14)))
             Circle()

@@ -71,18 +71,10 @@ final class SyncController: ObservableObject {
         }
     }
 
-    /// Wystarczy klucz TMDB — bez serwisów VOD działają scenariusze „Do kupienia”
-    /// i „We dwoje · wszystkie”.
+    /// Wystarczy klucz TMDB — bez serwisów VOD działają scenariusze „Na półkę”
+    /// i „Wspólna lista”.
     var isConfigured: Bool {
         !tmdbCredential.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-    }
-
-    /// Imię do nazwy scenariusza „Z …” (opcjonalne, tylko na tym Macu).
-    @Published var partnerName: String = Scenario.partnerName {
-        didSet {
-            Scenario.partnerName = partnerName
-            WidgetCenter.shared.reloadAllTimelines()
-        }
     }
 
     /// Serwisy VOD rozpoznane w Twoich linkach — tylko z nich pokazujemy propozycje.
@@ -103,6 +95,8 @@ final class SyncController: ObservableObject {
         var canAdvance = false
         var scenario: Scenario = .forMe
         var available: [Scenario] = []
+        var flips: [Int] = []
+        var canGoBack = false
     }
 
     var panel: PanelView {
@@ -118,7 +112,9 @@ final class SyncController: ObservableObject {
             event: lane.event,
             canAdvance: LaneResolver.canAdvance(ids: ids, kind: .shelf),
             scenario: scenario,
-            available: LaneResolver.availableScenarios(snapshot: snapshot, state: state, filter: DeskLane.panel.filter)
+            available: LaneResolver.availableScenarios(snapshot: snapshot, state: state, filter: DeskLane.panel.filter),
+            flips: lane.flips ?? [],
+            canGoBack: lane.canGoBack
         )
     }
 
@@ -139,6 +135,7 @@ final class SyncController: ObservableObject {
     }
 
     func shuffle() { act { DeskActions.shuffle(.panel) } }
+    func back() { act { DeskActions.back(.panel) } }
     func next(slot: Int, pick: Pick) { act { DeskActions.next(.panel, slot: slot, pickID: pick.id) } }
     func hide(slot: Int, pick: Pick, reason: Dismissal.Reason) {
         act { DeskActions.hide(.panel, slot: slot, pickID: pick.id, reason: reason) }

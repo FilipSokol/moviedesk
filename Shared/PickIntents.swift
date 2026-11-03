@@ -23,7 +23,7 @@ struct DeskConfigurationIntent: WidgetConfigurationIntent {
     var filter: PickFilter { PickFilter(media: media, source: source, service: service, scenario: scenario) }
 }
 
-/// Przycisk scenariusza: Dla mnie → Do kupienia → We dwoje · VOD → We dwoje · wszystkie.
+/// Przycisk scenariusza: Solo → Na półkę → Randka → Wspólna lista.
 /// Pomija scenariusze, w których nie ma teraz żadnych propozycji.
 struct CycleScenarioIntent: AppIntent {
     static let title: LocalizedStringResource = "Zmień scenariusz"
@@ -65,6 +65,27 @@ struct NextPickIntent: AppIntent {
     func perform() async throws -> some IntentResult {
         if let lane = DeskLane(key: laneKey) {
             DeskActions.next(lane, slot: slot, pickID: pickID)
+        }
+        return .result()
+    }
+}
+
+/// „Cofnij o krok” — wraca do poprzednich tytułów (gdy przeklikałeś za daleko).
+struct BackIntent: AppIntent {
+    static let title: LocalizedStringResource = "Poprzednie propozycje"
+    static var isDiscoverable: Bool { false }
+
+    @Parameter(title: "Pas") var laneKey: String
+
+    init() {}
+
+    init(lane: DeskLane) {
+        self.laneKey = lane.key
+    }
+
+    func perform() async throws -> some IntentResult {
+        if let lane = DeskLane(key: laneKey) {
+            DeskActions.back(lane)
         }
         return .result()
     }

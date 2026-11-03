@@ -14,26 +14,25 @@ gustu z Filmwebu i dostępne w Twoich serwisach VOD, do tego skróty do stron.
 
 ## Scenariusze
 
-Przycisk scenariusza (♥ / 👤 / 💿 w widgecie, kapsułki w panelu) przełącza, czego szukamy:
+Przycisk scenariusza w widgecie (albo kapsułki w panelu) przełącza, czego szukamy:
 
 | Scenariusz | Co pokazuje | Link prowadzi do |
 |---|---|---|
-| **Dla mnie** | Twój gust: nowe tytuły, z listy „Chcę zobaczyć” i do powtórki — tylko na Twoich serwisach VOD | serwisu VOD |
-| **Do kupienia** | nowe filmy (ostatnie 2 lata) w Twoich ulubionych gatunkach, które mają już wydanie cyfrowe lub płytowe (Blu-ray/DVD), więc są w dobrej jakości | Google („tytuł rok Blu-ray”) |
-| **We dwoje · VOD** | filmy na wspólny wieczór: bez horrorów i bardzo krwawych filmów, mniej akcji i przemocy, więcej love story i dobrych dramatów/komedii; tylko na Twoich serwisach | serwisu VOD |
-| **We dwoje · wszystkie** | to samo, ale bez ograniczenia do serwisów | serwisu, a gdy filmu w nich nie ma — Google („gdzie obejrzeć”) |
+| 👤 **Solo** | Twój gust: nowe tytuły, z listy „Chcę zobaczyć” i do powtórki — na Twoich serwisach | serwisu VOD |
+| 💿 **Na półkę** | świeże filmy (ostatnie 2 lata) w Twoich ulubionych gatunkach, które mają już wydanie Blu-ray albo cyfrowe — w dobrej jakości, do kupienia | Google („tytuł rok Blu-ray”) |
+| ❤️ **Randka** | na wieczór we dwoje: bez horrorów i bardzo krwawych filmów, mniej akcji i przemocy, więcej love story i dobrych dramatów/komedii — do włączenia od razu na Twoich serwisach | serwisu VOD |
+| 💌 **Wspólna lista** | to samo co „Randka”, ale gdziekolwiek są dostępne | serwisu, a gdy filmu w nich nie ma — Google („gdzie obejrzeć”) |
 
 Szczegóły i decyzje:
 - Przemoc nie wyklucza filmu od razu (przykład: „Django” — wciąga, ale brutalne), tylko obniża
   ocenę; odpadają filmy z wieloma „krwawymi” słowami kluczowymi TMDB (gore, tortury, splatter…)
   i każdy horror. Reguły są w `App/PartnerProfile.swift`.
-- W scenariuszach „We dwoje” co czwarty tytuł to film, który znasz i oceniłeś wysoko
-  („Znasz i lubisz”) — do pokazania jej; reszta to filmy, których jeszcze nie oceniłeś.
-- Scenariusze „We dwoje” i „Do kupienia” to tylko filmy (bez seriali).
-- Przycisk pomija scenariusze, w których akurat nic nie ma (np. „We dwoje · VOD” bez
-  linków do serwisów). Bez serwisów VOD działają „Do kupienia” i „We dwoje · wszystkie”.
+- W „Randce” i „Wspólnej liście” co czwarty tytuł to film, który znasz i oceniłeś wysoko
+  („Znasz i lubisz”); reszta to filmy, których jeszcze nie oceniłeś.
+- „Randka”, „Wspólna lista” i „Na półkę” to tylko filmy (bez seriali).
+- Przycisk pomija scenariusze, w których akurat nic nie ma. Bez linków do serwisów VOD
+  działają „Na półkę” i „Wspólna lista”.
 - Każdy scenariusz pamięta, gdzie skończyłeś przewijać. Ukrycie tytułu działa we wszystkich.
-- W ustawieniach możesz wpisać imię (w narzędniku, np. „Asią”) — scenariusz nazwie się „Z Asią”.
 
 Każdy widget z propozycjami ma ustawienia („Edytuj widżet”): **Scenariusz na start**,
 **Rodzaj** (filmy / seriale),
@@ -41,7 +40,11 @@ Każdy widget z propozycjami ma ustawienia („Edytuj widżet”): **Scenariusz 
 Widgety o tych samych ustawieniach przewijają się razem; różne ustawienia — niezależnie.
 
 Akcje i animacje:
-- **↻ / ⏭** — nowe tytuły wjeżdżają z prawej, kolumna po kolumnie; strzałka robi pełny obrót.
+- **↻ / ⏭** — „tasowanie kart”: każda karta robi pełny obrót z perspektywą i sprężystym
+  dobiciem, kolumna po kolumnie; w połowie obrotu podmienia się plakat, a po nim przelatuje
+  odblask. Zmiana scenariusza obraca wszystkie karty naraz z rozmyciem.
+- **↶ Cofnij o krok** — wraca do tytułów sprzed ostatniego kliknięcia (do 20 kroków wstecz);
+  karty obracają się wtedy w drugą stronę. W panelu działa też ⌘Z.
 - **Nie pokazuj więcej** — tytuł znika ze wszystkich widgetów i z przyszłych propozycji,
   na jego miejsce wskakuje następny; przez 8 sekund widać „Ukryto · Cofnij”.
 - **Zapisz na później** — tytuł trafia do „Zapisanych” (filtr w widgecie, pasek w panelu)

@@ -132,6 +132,22 @@ struct TMDBClient: Sendable {
         )
     }
 
+    /// Logotypy serwisów dostępnych w Polsce: nazwa dostawcy → ścieżka obrazka.
+    func providerLogosPL() async throws -> [String: String] {
+        struct Response: Decodable {
+            struct Provider: Decodable {
+                let providerName: String
+                let logoPath: String?
+            }
+            let results: [Provider]
+        }
+        let response: Response = try await get("watch/providers/movie", ["watch_region": "PL"])
+        return Dictionary(
+            response.results.compactMap { provider in provider.logoPath.map { (provider.providerName, $0) } },
+            uniquingKeysWith: { first, _ in first }
+        )
+    }
+
     /// Obrazek z CDN TMDB, np. `w342` (plakat) albo `w780` (kadr).
     func image(_ path: String, size: String) async throws -> Data {
         let request = URLRequest(url: URL(string: "https://image.tmdb.org/t/p/\(size)" + path)!)

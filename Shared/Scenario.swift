@@ -1,7 +1,9 @@
 import AppIntents
 import Foundation
 
-/// Scenariusz propozycji — przełączany przyciskiem w widgecie albo w panelu.
+/// Scenariusz propozycji — przełączany przyciskami w widgecie albo w panelu.
+///
+/// Nazwy są krótkie, bo stoją na małych przyciskach; szczegóły mówi podtytuł.
 enum Scenario: String, Codable, CaseIterable, Sendable, AppEnum {
     /// Twój gust, tylko Twoje serwisy VOD.
     case forMe
@@ -14,38 +16,36 @@ enum Scenario: String, Codable, CaseIterable, Sendable, AppEnum {
 
     static let typeDisplayRepresentation: TypeDisplayRepresentation = "Scenariusz"
     static let caseDisplayRepresentations: [Scenario: DisplayRepresentation] = [
-        .forMe: "Dla mnie",
-        .toBuy: "Do kupienia",
-        .together: "We dwoje · VOD",
-        .togetherAnywhere: "We dwoje · wszystkie",
+        .forMe: DisplayRepresentation(title: "Solo", subtitle: "Twój gust, Twoje serwisy"),
+        .toBuy: DisplayRepresentation(title: "Na półkę", subtitle: "Świeże wydania Blu-ray i cyfrowe"),
+        .together: DisplayRepresentation(title: "Randka", subtitle: "We dwoje, do włączenia od razu"),
+        .togetherAnywhere: DisplayRepresentation(title: "Wspólna lista", subtitle: "We dwoje, gdziekolwiek są"),
     ]
+
+    var title: String {
+        switch self {
+        case .forMe: "Solo"
+        case .toBuy: "Na półkę"
+        case .together: "Randka"
+        case .togetherAnywhere: "Wspólna lista"
+        }
+    }
+
+    var subtitle: String {
+        switch self {
+        case .forMe: "Twój gust, Twoje serwisy"
+        case .toBuy: "Świeże wydania Blu-ray i cyfrowe"
+        case .together: "We dwoje, do włączenia od razu"
+        case .togetherAnywhere: "We dwoje, gdziekolwiek są"
+        }
+    }
 
     var symbol: String {
         switch self {
         case .forMe: "person.fill"
-        case .toBuy: "opticaldisc"
+        case .toBuy: "opticaldisc.fill"
         case .together: "heart.fill"
-        case .togetherAnywhere: "heart.circle"
-        }
-    }
-
-    /// Pełna nazwa; zamiast „We dwoje” może być „Z Asią” (imię z ustawień).
-    var title: String {
-        switch self {
-        case .forMe: "Dla mnie"
-        case .toBuy: "Do kupienia"
-        case .together: "\(Self.couplePhrase) · VOD"
-        case .togetherAnywhere: "\(Self.couplePhrase) · wszystkie"
-        }
-    }
-
-    /// Krótka nazwa do małych przycisków.
-    var shortTitle: String {
-        switch self {
-        case .forMe: "Dla mnie"
-        case .toBuy: "Do kupienia"
-        case .together: Self.couplePhrase
-        case .togetherAnywhere: "\(Self.couplePhrase) +"
+        case .togetherAnywhere: "heart.text.square.fill"
         }
     }
 
@@ -56,18 +56,4 @@ enum Scenario: String, Codable, CaseIterable, Sendable, AppEnum {
 
     /// Czy propozycje muszą być na Twoich serwisach VOD.
     var requiresVOD: Bool { self == .forMe || self == .together }
-
-    // MARK: - Imię partnerki (opcjonalne, tylko lokalnie)
-
-    private static let partnerKey = "partner.name"
-
-    static var partnerName: String {
-        get { AppGroup.defaults.string(forKey: partnerKey) ?? "" }
-        set { AppGroup.defaults.set(newValue.trimmingCharacters(in: .whitespacesAndNewlines), forKey: partnerKey) }
-    }
-
-    private static var couplePhrase: String {
-        let name = partnerName
-        return name.isEmpty ? "We dwoje" : "Z \(name)"
-    }
 }

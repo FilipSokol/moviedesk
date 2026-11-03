@@ -28,6 +28,11 @@ struct DeskEntry: TimelineEntry {
     var scenario: Scenario = .forMe
     /// Czy przycisk scenariusza ma dokąd przełączyć.
     var canSwitchScenario = false
+    /// Liczniki obrotów kart (animacja „tasowania”).
+    var flips: [Int] = []
+    var canGoBack = false
+
+    func flip(_ slot: Int) -> Int { flips.indices.contains(slot) ? flips[slot] : 0 }
 
     var hero: Pick? { slots.first }
 
@@ -87,6 +92,8 @@ extension DeskEntry {
         entry.total = ids.count
         entry.canAdvance = LaneResolver.canAdvance(ids: ids, kind: kind)
         entry.event = laneState.event
+        entry.flips = laneState.flips ?? []
+        entry.canGoBack = laneState.canGoBack
         return entry
     }
 
@@ -130,9 +137,11 @@ struct DeskProvider: AppIntentTimelineProvider {
         if first.showsUndo, let at = first.event?.at {
             dates.append(at.addingTimeInterval(DeskActions.undoWindow + 0.5))
         }
-        // „Skończysz ok. …” — co kwadrans przez 2 godziny (pojedynczy tytuł widać w hero i tablicy).
-        if kind != .shelf, first.status == .ok {
-            dates += (1...8).map { now.addingTimeInterval(Double($0) * 900) }
+        // „Skończysz ok. …” — co pół godziny przez 2 godziny, tylko tam, gdzie ten napis jest
+        // (duży „Jeden na dziś” i „Wieczór”). Każdy wpis to osobny render, więc nie dokładamy ich bez potrzeby.
+        let showsFinishTime = kind != .shelf && (context.family == .systemLarge || context.family == .systemExtraLarge)
+        if showsFinishTime, first.status == .ok {
+            dates += (1...4).map { now.addingTimeInterval(Double($0) * 1800) }
         }
         let entries = dates.sorted().map { date -> DeskEntry in
             var entry = first
@@ -143,7 +152,7 @@ struct DeskProvider: AppIntentTimelineProvider {
         let afterMidnight = Calendar.current.nextDate(
             after: now, matching: DateComponents(hour: 0, minute: 30), matchingPolicy: .nextTime
         ) ?? now.addingTimeInterval(24 * 3600)
-        let refresh = min(afterMidnight, (entries.last?.date ?? now).addingTimeInterval(900))
+        let refresh = min(afterMidnight, (entries.last?.date ?? now).addingTimeInterval(1800))
         return Timeline(entries: entries, policy: .after(refresh))
     }
 }
