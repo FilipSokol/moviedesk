@@ -40,63 +40,69 @@ private struct BoardFeature: View {
     @Environment(\.widgetRenderingMode) private var renderingMode
 
     var body: some View {
-        ZStack(alignment: .bottomLeading) {
-            BackdropFill(pick: pick, maxPixel: 900)
-                .opacity(renderingMode == .fullColor ? 1 : 0.5)
-                .invalidatableContent()
-            if renderingMode == .fullColor {
-                LinearGradient(colors: [.clear, .black.opacity(0.85)], startPoint: .top, endPoint: .bottom)
-                LinearGradient(colors: [.clear, .black.opacity(0.35)], startPoint: .leading, endPoint: .trailing)
-            }
-
-            VStack(alignment: .leading, spacing: 6) {
-                Text(PickFormatting.reasonLine(pick))
-                    .font(.system(size: 10.5, weight: .semibold, design: .rounded))
-                    .textCase(.uppercase)
-                    .tracking(0.5)
-                    .foregroundStyle(Color.white.opacity(0.75))
-                Text(pick.title)
-                    .font(.system(size: 24, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
-                    .lineLimit(2)
-                    .minimumScaleFactor(0.8)
-                    .contentTransition(.interpolate)
-                    .animation(.smooth(duration: 0.45).delay(0.1), value: pick.id)
-                HStack(spacing: 8) {
-                    if let rating = pick.rating {
-                        FullRatingBadge(rating: rating, size: 12, color: .white)
-                    }
-                    Text(PickFormatting.metaLine(pick, maxGenres: 2))
+        VStack(alignment: .leading, spacing: 6) {
+            Text(PickFormatting.reasonLine(pick))
+                .font(.system(size: 10.5, weight: .semibold, design: .rounded))
+                .textCase(.uppercase)
+                .tracking(0.5)
+                .foregroundStyle(Color.white.opacity(0.75))
+                .lineLimit(1)
+            Text(pick.title)
+                .font(.system(size: 24, weight: .bold, design: .rounded))
+                .foregroundStyle(.white)
+                .lineLimit(2)
+                .minimumScaleFactor(0.8)
+                .contentTransition(.interpolate)
+                .animation(.smooth(duration: 0.45).delay(0.1), value: pick.id)
+            HStack(spacing: 8) {
+                if let rating = pick.rating {
+                    FullRatingBadge(rating: rating, size: 12, color: .white)
+                }
+                Text(PickFormatting.metaLine(pick, maxGenres: 2))
+                    .font(.system(size: 11, design: .rounded))
+                    .foregroundStyle(Color.white.opacity(0.8))
+                    .lineLimit(1)
+                if let finish = PickFormatting.finishText(pick, from: entry.date) {
+                    Text("· \(finish)")
                         .font(.system(size: 11, design: .rounded))
-                        .foregroundStyle(Color.white.opacity(0.8))
+                        .foregroundStyle(Color.white.opacity(0.65))
                         .lineLimit(1)
+                        .contentTransition(.numericText())
                 }
-                if let overview = pick.overview?.nilIfEmpty ?? pick.tagline?.nilIfEmpty {
-                    Text(overview)
-                        .font(.system(size: 12, design: .rounded))
-                        .foregroundStyle(Color.white.opacity(0.85))
-                        .lineLimit(3)
-                        .id(pick.id)
-                        .transition(.opacity.combined(with: .offset(y: 6)))
-                        .animation(.smooth(duration: 0.45).delay(0.18), value: pick.id)
-                }
-                HStack(spacing: 8) {
-                    ServiceChip(pick: pick, height: 30)
-                    BackButton(entry: entry, size: 30)
-                    SaveToggle(pick: pick, isSaved: entry.isSaved(pick), size: 30)
-                    HideButton(lane: entry.lane, slot: 0, pick: pick, size: 30)
-                    NextButton(lane: entry.lane, slot: 0, pick: pick, size: 30, enabled: entry.canAdvance)
-                    Spacer(minLength: 0)
-                    if let finish = PickFormatting.finishText(pick, from: entry.date) {
-                        Text(finish)
-                            .font(.system(size: 10.5, design: .rounded))
-                            .foregroundStyle(Color.white.opacity(0.7))
-                            .contentTransition(.numericText())
-                    }
-                }
-                .padding(.top, 4)
             }
-            .padding(18)
+            if let overview = pick.overview?.nilIfEmpty ?? pick.tagline?.nilIfEmpty {
+                Text(overview)
+                    .font(.system(size: 12, design: .rounded))
+                    .foregroundStyle(Color.white.opacity(0.85))
+                    .lineLimit(3)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .id(pick.id)
+                    .transition(.opacity.combined(with: .offset(y: 6)))
+                    .animation(.smooth(duration: 0.45).delay(0.18), value: pick.id)
+            }
+            HStack(spacing: 8) {
+                ServiceChip(pick: pick, height: 30)
+                Spacer(minLength: 0)
+                BackButton(entry: entry, size: 30)
+                SaveToggle(pick: pick, isSaved: entry.isSaved(pick), size: 30)
+                HideButton(lane: entry.lane, slot: 0, pick: pick, size: 30)
+                NextButton(lane: entry.lane, slot: 0, pick: pick, size: 30, enabled: entry.canAdvance)
+            }
+            .padding(.top, 4)
+        }
+        .padding(18)
+        // Treść wypełnia lewą część i trzyma się jej dolnego lewego rogu; kadr jest tylko tłem.
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
+        .background {
+            ZStack {
+                BackdropFill(pick: pick, maxPixel: 900)
+                    .opacity(renderingMode == .fullColor ? 1 : 0.5)
+                    .invalidatableContent()
+                if renderingMode == .fullColor {
+                    LinearGradient(colors: [.clear, .black.opacity(0.85)], startPoint: .top, endPoint: .bottom)
+                    LinearGradient(colors: [.black.opacity(0.35), .clear], startPoint: .leading, endPoint: .trailing)
+                }
+            }
         }
         .clipped()
         .overlay(alignment: .top) {

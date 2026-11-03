@@ -115,6 +115,9 @@ struct PicksRow: View {
     var menu: ((Int, Pick) -> [PickMenuAction])? = nil
     /// Liczniki obrotów miejsc (z pasa); puste — bez obrotów.
     var flips: [Int] = []
+    /// Stała szerokość plakatu. Potrzebna w panelu z paska menu: okno dopasowuje się do
+    /// treści i nie podaje plakatom szerokości, więc bez tego zwijały się do kropki.
+    var posterWidth: CGFloat? = nil
 
     var body: some View {
         HStack(alignment: .top, spacing: 8) {
@@ -127,7 +130,8 @@ struct PicksRow: View {
                             titleSize: titleSize,
                             posterPixels: posterPixels,
                             showsDetailsOnHover: showsDetailsOnHover,
-                            menu: menu?(slot, picks[slot]) ?? []
+                            menu: menu?(slot, picks[slot]) ?? [],
+                            posterWidth: posterWidth
                         )
                         .id(picks[slot].id)
                         .transition(DeskTransitions.card(for: event))
@@ -150,6 +154,7 @@ private struct PickCard: View {
     let posterPixels: CGFloat
     let showsDetailsOnHover: Bool
     let menu: [PickMenuAction]
+    var posterWidth: CGFloat? = nil
 
     var body: some View {
         // Menu i dymek tylko w aplikacji — w widgecie nie zadziałają.
@@ -192,6 +197,7 @@ private struct PickCard: View {
     private var content: some View {
         VStack(spacing: 5) {
             PickPoster(pick: pick, maxPixel: posterPixels)
+                .frame(width: posterWidth, height: posterWidth.map { $0 * 1.5 })
             Text(pick.title)
                 .font(.system(size: titleSize, weight: .medium, design: .rounded))
                 .lineLimit(1)
@@ -227,6 +233,11 @@ struct PickPoster: View {
             .overlay(alignment: .bottomLeading) {
                 if showsBadges, let rating = pick.rating {
                     RatingBadge(rating: rating).padding(4)
+                }
+            }
+            .overlay(alignment: .topLeading) {
+                if showsBadges, let mine = pick.myRating {
+                    WatchedBadge(rating: mine).padding(4)
                 }
             }
             .overlay(alignment: .topTrailing) {
@@ -277,31 +288,33 @@ struct RatingBadge: View {
 }
 
 /// Znaczek serwisu: prawdziwe logo (z TMDB), a dopóki go nie ma — inicjał w kolorze marki.
+/// „✓ 8” — już to widziałeś i tak oceniłeś na Filmwebie.
+struct WatchedBadge: View {
+    let rating: Int
+
+    var body: some View {
+        HStack(spacing: 2) {
+            Image(systemName: "checkmark")
+                .font(.system(size: 7, weight: .black))
+            Text("\(rating)")
+                .font(.system(size: 9, weight: .bold, design: .rounded))
+                .monospacedDigit()
+        }
+        .foregroundStyle(.white)
+        .padding(.horizontal, 5)
+        .padding(.vertical, 2)
+        .background(Capsule().fill(Color.green.opacity(0.85)))
+        .overlay(Capsule().strokeBorder(Color.white.opacity(0.3), lineWidth: 0.5))
+        .accessibilityLabel("Widziałeś, Twoja ocena \(rating)")
+    }
+}
+
 struct ServiceDot: View {
     let service: StreamingService
     var size: CGFloat = 16
 
     var body: some View {
-        let shape = RoundedRectangle(cornerRadius: size * 0.26, style: .continuous)
-        Group {
-            if let logo = service.logo(maxPixel: size * 3) {
-                Image(decorative: logo, scale: 1)
-                    .resizable()
-                    .widgetAccentedRenderingMode(.fullColor)
-                    .scaledToFill()
-            } else {
-                Text(String(service.displayName.prefix(1)))
-                    .font(.system(size: size * 0.55, weight: .heavy, design: .rounded))
-                    .foregroundStyle(service.onTint)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .background(service.tint)
-            }
-        }
-        .frame(width: size, height: size)
-        .clipShape(shape)
-        .overlay(shape.strokeBorder(Color.white.opacity(0.45), lineWidth: 0.5))
-        .shadow(color: .black.opacity(0.3), radius: 2, y: 1)
-        .accessibilityLabel(service.displayName)
+        ServiceMark(service: service, size: size)
     }
 }
 

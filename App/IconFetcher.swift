@@ -42,10 +42,8 @@ enum IconFetcher {
             guard let url = link.url, let host = LinkIcon.host(of: url),
                   LinkIcon.existingFile(for: url) == nil
             else { continue }
-            if let service = StreamingService.detect(in: url),
-               FileManager.default.fileExists(atPath: PicksStore.logosDirectory?.appendingPathComponent(service.logoFileName).path ?? "") {
-                continue
-            }
+            // Serwisy VOD mają własne znaczki (`ServiceMark`) — favikona niepotrzebna.
+            if StreamingService.detect(in: url) != nil { continue }
             guard let data = await download(host: host),
                   let style = analyze(data)
             else { continue }

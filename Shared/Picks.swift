@@ -77,6 +77,8 @@ struct Pick: Codable, Hashable, Identifiable, Sendable {
     var scenario: Scenario? = nil
     /// Krótka informacja zamiast „bo lubisz …”, np. „Na Blu-ray/DVD od marca 2025”.
     var note: String? = nil
+    /// Twoja ocena z Filmwebu, jeśli już to widziałeś.
+    var myRating: Int? = nil
 
     var id: String { "\(media.rawValue)-\(tmdbID)" }
     var resolvedScenario: Scenario { scenario ?? .forMe }

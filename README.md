@@ -19,6 +19,7 @@ Przycisk scenariusza w widgecie (albo kapsułki w panelu) przełącza, czego szu
 | Scenariusz | Co pokazuje | Link prowadzi do |
 |---|---|---|
 | 👤 **Solo** | Twój gust: nowe tytuły, z listy „Chcę zobaczyć” i do powtórki — na Twoich serwisach | serwisu VOD |
+| ✨ **Nowości** | najlepsze świeże filmy i seriale w Twoich serwisach z ostatniego miesiąca (premiery cyfrowe w PL, nowe odcinki); obejrzane nie znikają, tylko dostają znaczek z Twoją oceną (✓ 8) | serwisu VOD |
 | 💿 **Premiery HD** | świeże filmy (ostatnie 2 lata) w Twoich ulubionych gatunkach, które mają już wydanie Blu-ray albo cyfrowe — w dobrej jakości, do kupienia | Google („tytuł rok Blu-ray”) |
 | ❤️ **Randka** | na wieczór we dwoje: bez horrorów i bardzo krwawych filmów, mniej akcji i przemocy, więcej love story i dobrych dramatów/komedii — do włączenia od razu na Twoich serwisach | serwisu VOD |
 | 💌 **Wspólna lista** | to samo co „Randka”, ale gdziekolwiek są dostępne | serwisu, a gdy filmu w nich nie ma — Google („gdzie obejrzeć”) |
@@ -32,6 +33,10 @@ Szczegóły i decyzje:
 - „Randka”, „Wspólna lista” i „Premiery HD” to tylko filmy (bez seriali).
 - Przycisk pomija scenariusze, w których akurat nic nie ma. Bez linków do serwisów VOD
   działają „Premiery HD” i „Wspólna lista”.
+- „Nowości” to przybliżenie: TMDB nie podaje dokładnej daty dodania tytułu do serwisu,
+  więc liczą się premiery cyfrowe w Polsce z ostatnich ~5 tygodni, świeże filmy (pół roku),
+  które już są w abonamencie, i seriale z odcinkami z ostatniego miesiąca.
+- Tytuły, które już oceniłeś na Filmwebie, mają na plakacie zielony znaczek z Twoją oceną.
 - Każdy scenariusz pamięta, gdzie skończyłeś przewijać. Ukrycie tytułu działa we wszystkich.
 
 Każdy widget z propozycjami ma ustawienia („Edytuj widżet”): **Scenariusz na start**,

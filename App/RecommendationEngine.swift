@@ -260,16 +260,107 @@ struct RecommendationEngine {
             excluded: excluded
         )
 
-        let everything = pool + toBuy + together.vod + together.anywhere
+        // 12. Nowości: najlepsze świeże tytuły w Twoich serwisach (także już obejrzane — oznaczone)
+        await progress("Szukanie nowości w Twoich serwisach…")
+        let ratedByPick = Dictionary(
+            rated.map { (Self.pickID($0.rating.media, $0.ref.id), $0.rating) },
+            uniquingKeysWith: { first, _ in first }
+        )
+        let fresh = await buildFresh(profile: profile, ratedByPick: ratedByPick)
+
+        let everything = pool + fresh + toBuy + together.vod + together.anywhere
         guard !everything.isEmpty else {
             throw loved.isEmpty ? EngineError.notEnoughRatings : EngineError.nothingAvailable
         }
 
-        // 12. Szczegóły, oceny i obrazki (+ logotypy serwisów, raz)
+        // 13. Szczegóły, oceny i obrazki
         await progress("Pobieranie szczegółów, ocen i plakatów…")
-        let picks = await finalize(everything)
-        await IconFetcher.refreshServiceLogos(tmdb: tmdb)
+        let picks = await finalize(everything, myRatings: ratedByPick.mapValues(\.rate))
         return PicksSnapshot(generatedAt: .now, picks: picks)
+    }
+
+    // MARK: - Scenariusz „Nowości”
+
+    /// TMDB nie podaje, kiedy dokładnie tytuł trafił do serwisu, więc bierzemy najlepsze
+    /// przybliżenie: filmy z premierą cyfrową w Polsce w ostatnich ~5 tygodniach i świeże
+    /// filmy z ostatniego pół roku, które już są w abonamencie Twoich serwisów, oraz seriale
+    /// z odcinkami z ostatniego miesiąca. Obejrzane nie są pomijane — dostają Twoją ocenę.
+    private func buildFresh(profile: TasteProfile, ratedByPick: [String: RatedTitle]) async -> [Ready] {
+        guard !services.isEmpty, let catalog = try? await tmdb.providerIDsPL() else { return [] }
+        let providerIDs = Set(services.flatMap { service in
+            catalog.filter { service.matches(providerName: $0.key) }.map(\.value)
+        })
+        guard !providerIDs.isEmpty else { return [] }
+
+        let now = Date()
+        let monthAgo = now.addingTimeInterval(-35 * 24 * 3600)
+        let halfYearAgo = now.addingTimeInterval(-180 * 24 * 3600)
+        let day = DateFormatter()
+        day.dateFormat = "yyyy-MM-dd"
+        day.locale = Locale(identifier: "en_US_POSIX")
+
+        let common = [
+            "with_watch_providers": providerIDs.map(String.init).sorted().joined(separator: "|"),
+            "watch_region": "PL",
+            "with_watch_monetization_types": "flatrate",
+            "sort_by": "popularity.desc",
+        ]
+        var films: [TMDBTitle] = []
+        for page in 1...2 {
+            var query = common
+            query["region"] = "PL"
+            query["with_release_type"] = "4|6"
+            query["release_date.gte"] = day.string(from: monthAgo)
+            query["release_date.lte"] = day.string(from: now)
+            query["vote_count.gte"] = "20"
+            query["page"] = String(page)
+            films += (try? await tmdb.discover(.film, query)) ?? []
+        }
+        var recent = common
+        recent["primary_release_date.gte"] = day.string(from: halfYearAgo)
+        recent["vote_count.gte"] = "50"
+        films += (try? await tmdb.discover(.film, recent)) ?? []
+
+        var series: [TMDBTitle] = []
+        for page in 1...2 {
+            var query = common
+            query["air_date.gte"] = day.string(from: monthAgo)
+            query["air_date.lte"] = day.string(from: now)
+            query["vote_count.gte"] = "50"
+            query["page"] = String(page)
+            series += (try? await tmdb.discover(.serial, query)) ?? []
+        }
+
+        var seen = Set<String>()
+        var candidates: [Candidate] = []
+        for (media, list) in [(MediaKind.film, films), (MediaKind.serial, series)] {
+            for title in list {
+                let id = Self.pickID(media, title.id)
+                guard seen.insert(id).inserted, !excludedIDs.contains(id), (title.voteAverage ?? 0) >= 6.3 else { continue }
+                let rated = ratedByPick[id]
+                let score = ((title.voteAverage ?? 6.5) - 6.5) * 0.5
+                    + log10(max(title.popularity ?? 1, 1)) * 0.6
+                    + 1.2 * profile.affinity(genres: title.genreIDs)
+                candidates.append(Candidate(
+                    media: media, title: title, kind: rated == nil ? .discovery : .rewatch,
+                    filmwebID: rated?.filmwebID, score: score
+                ))
+            }
+        }
+
+        let ranked = Array(candidates.sorted { $0.score > $1.score }.prefix(60))
+        return await available(ranked, limit: 20).map { item in
+            var item = item
+            item.scenario = .fresh
+            let serviceName = item.service?.displayName ?? "VOD"
+            let isSeries = item.candidate.media == .serial
+            if let rated = ratedByPick[Self.pickID(item.candidate.media, item.candidate.title.id)] {
+                item.note = isSeries ? "Nowe odcinki · oceniłeś \(rated.rate)/10" : "Już widziałeś · \(rated.rate)/10"
+            } else {
+                item.note = isSeries ? "Nowe odcinki na \(serviceName)" : "Nowe na \(serviceName)"
+            }
+            return item
+        }
     }
 
     // MARK: - Scenariusz „Premiery HD”
@@ -554,7 +645,7 @@ struct RecommendationEngine {
     /// plakat i kadr dla każdej propozycji. Obrazki trafiają do kontenera App Group,
     /// bo widget nie ma dostępu do sieci. Sprzątanie starych obrazków robi aplikacja
     /// dopiero po zapisaniu nowej puli.
-    private func finalize(_ pool: [Ready]) async -> [Pick] {
+    private func finalize(_ pool: [Ready], myRatings: [String: Int]) async -> [Pick] {
         let posters = PicksStore.postersDirectory
         let backdrops = PicksStore.backdropsDirectory
         for directory in [posters, backdrops].compactMap({ $0 }) {
@@ -590,7 +681,8 @@ struct RecommendationEngine {
                 backdropFile: nil,
                 reason: candidate.reason,
                 scenario: item.ready.scenario,
-                note: item.ready.note
+                note: item.ready.note,
+                myRating: myRatings[Self.pickID(candidate.media, title.id)]
             )
 
             // Ocena

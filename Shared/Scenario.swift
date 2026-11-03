@@ -7,6 +7,8 @@ import Foundation
 enum Scenario: String, Codable, CaseIterable, Sendable, AppEnum {
     /// Twój gust, tylko Twoje serwisy VOD.
     case forMe
+    /// Najlepsze świeże tytuły w Twoich serwisach (ostatni miesiąc), z zaznaczeniem obejrzanych.
+    case fresh
     /// Nowe filmy w Twoim guście, już wydane cyfrowo/na płytach — do kupienia (linki do Google).
     case toBuy
     /// Na wieczór we dwoje — bez horrorów i krwawych scen, na Twoich serwisach VOD.
@@ -17,6 +19,7 @@ enum Scenario: String, Codable, CaseIterable, Sendable, AppEnum {
     static let typeDisplayRepresentation: TypeDisplayRepresentation = "Scenariusz"
     static let caseDisplayRepresentations: [Scenario: DisplayRepresentation] = [
         .forMe: DisplayRepresentation(title: "Solo", subtitle: "Twój gust, Twoje serwisy"),
+        .fresh: DisplayRepresentation(title: "Nowości", subtitle: "Świeżo w Twoich serwisach, ostatni miesiąc"),
         .toBuy: DisplayRepresentation(title: "Premiery HD", subtitle: "Świeże filmy już na Blu-ray i w wersji cyfrowej"),
         .together: DisplayRepresentation(title: "Randka", subtitle: "We dwoje, do włączenia od razu"),
         .togetherAnywhere: DisplayRepresentation(title: "Wspólna lista", subtitle: "We dwoje, gdziekolwiek są"),
@@ -25,6 +28,7 @@ enum Scenario: String, Codable, CaseIterable, Sendable, AppEnum {
     var title: String {
         switch self {
         case .forMe: "Solo"
+        case .fresh: "Nowości"
         case .toBuy: "Premiery HD"
         case .together: "Randka"
         case .togetherAnywhere: "Wspólna lista"
@@ -34,6 +38,7 @@ enum Scenario: String, Codable, CaseIterable, Sendable, AppEnum {
     var subtitle: String {
         switch self {
         case .forMe: "Twój gust, Twoje serwisy"
+        case .fresh: "Świeżo w Twoich serwisach, ostatni miesiąc"
         case .toBuy: "Świeże filmy już na Blu-ray i w wersji cyfrowej"
         case .together: "We dwoje, do włączenia od razu"
         case .togetherAnywhere: "We dwoje, gdziekolwiek są"
@@ -43,6 +48,7 @@ enum Scenario: String, Codable, CaseIterable, Sendable, AppEnum {
     var symbol: String {
         switch self {
         case .forMe: "person.fill"
+        case .fresh: "sparkles"
         case .toBuy: "opticaldisc.fill"
         case .together: "heart.fill"
         case .togetherAnywhere: "heart.text.square.fill"
@@ -55,5 +61,5 @@ enum Scenario: String, Codable, CaseIterable, Sendable, AppEnum {
     }
 
     /// Czy propozycje muszą być na Twoich serwisach VOD.
-    var requiresVOD: Bool { self == .forMe || self == .together }
+    var requiresVOD: Bool { self == .forMe || self == .fresh || self == .together }
 }

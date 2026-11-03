@@ -44,6 +44,24 @@ enum StreamingService: String, Codable, CaseIterable, Identifiable, Sendable {
         }
     }
 
+    /// Wygląd znaczka serwisu (`ServiceMark`).
+    var mark: (text: String, colors: [Color], textColor: Color) {
+        func rgb(_ hex: UInt32) -> Color {
+            Color(red: Double((hex >> 16) & 0xFF) / 255, green: Double((hex >> 8) & 0xFF) / 255, blue: Double(hex & 0xFF) / 255)
+        }
+        switch self {
+        case .netflix: return ("N", [rgb(0x1F1F1F), rgb(0x000000)], rgb(0xE50914))
+        case .hboMax: return ("max", [rgb(0x2B44FF), rgb(0x5B1FD6)], .white)
+        case .primeVideo: return ("prime", [rgb(0x22B8F0), rgb(0x0A6FB8)], .white)
+        case .disneyPlus: return ("D+", [rgb(0x2140A8), rgb(0x0B1446)], .white)
+        case .skyShowtime: return ("sky", [rgb(0x8A3CF5), rgb(0x3B0C8C)], .white)
+        case .appleTV: return ("tv+", [rgb(0x3A3A3C), rgb(0x0E0E10)], .white)
+        case .canalPlus: return ("C+", [rgb(0x2E2E2E), rgb(0x000000)], .white)
+        case .player: return ("P", [rgb(0xFFD54A), rgb(0xF2A900)], .black)
+        case .polsatBoxGo: return ("box", [rgb(0xFF8A1F), rgb(0xE04600)], .white)
+        }
+    }
+
     /// Kolor tekstu na tle marki.
     var onTint: Color { self == .player ? .black : .white }
 

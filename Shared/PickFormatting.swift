@@ -77,6 +77,8 @@ enum PickFormatting {
                 return "bo lubisz \(reason)"
             }
             return pick.kind.label
+        case .fresh:
+            return "Nowość w serwisie"
         case .toBuy:
             return "Świeże wydanie"
         case .together, .togetherAnywhere:

@@ -249,12 +249,7 @@ final class SyncController: ObservableObject {
 
     /// Logotypy serwisów i favikony linków — od razu, bez czekania na nocną synchronizację.
     func refreshIcons() async {
-        var changed = await IconFetcher.refreshFavicons(for: LinkStore.load())
-        let key = tmdbCredential.trimmingCharacters(in: .whitespacesAndNewlines)
-        if !key.isEmpty, await IconFetcher.refreshServiceLogos(tmdb: TMDBClient(credential: key)) {
-            changed = true
-        }
-        if changed {
+        if await IconFetcher.refreshFavicons(for: LinkStore.load()) {
             objectWillChange.send()
             WidgetCenter.shared.reloadAllTimelines()
         }

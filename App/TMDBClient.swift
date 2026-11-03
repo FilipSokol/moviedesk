@@ -34,6 +34,7 @@ struct TMDBTitle: Decodable, Hashable, Sendable {
     let overview: String?
     let voteAverage: Double?
     let voteCount: Int?
+    let popularity: Double?
     /// W wynikach list…
     let genreIds: [Int]?
     /// …a w szczegółach.
@@ -130,6 +131,23 @@ struct TMDBClient: Sendable {
             names: region?.flatrate?.map(\.providerName) ?? [],
             link: region?.link.flatMap(URL.init(string:))
         )
+    }
+
+    /// Identyfikatory serwisów dostępnych w Polsce (nazwa → id), z list filmów i seriali.
+    func providerIDsPL() async throws -> [String: Int] {
+        struct Response: Decodable {
+            struct Provider: Decodable {
+                let providerId: Int
+                let providerName: String
+            }
+            let results: [Provider]
+        }
+        var result: [String: Int] = [:]
+        for path in ["watch/providers/movie", "watch/providers/tv"] {
+            let response: Response = try await get(path, ["watch_region": "PL"])
+            for provider in response.results { result[provider.providerName] = provider.providerId }
+        }
+        return result
     }
 
     /// Logotypy serwisów dostępnych w Polsce: nazwa dostawcy → ścieżka obrazka.

@@ -24,24 +24,26 @@ struct BackdropFill: View {
     var blur: CGFloat = 0
 
     var body: some View {
-        ZStack {
-            WidgetBackdrop()
-            if let pick, let image = ImageStore.backdrop(for: pick, maxPixel: maxPixel)
-                ?? ImageStore.poster(for: pick, maxPixel: maxPixel) {
-                Image(decorative: image, scale: 1)
-                    .resizable()
-                    .widgetAccentedRenderingMode(.accentedDesaturated)
-                    .scaledToFill()
-                    .blur(radius: blur)
-                    .id(pick.id)
-                    .transition(.asymmetric(
-                        insertion: .opacity.combined(with: .scale(scale: 1.08)),
-                        removal: .opacity
-                    ))
+        // Obraz jest nakładką na pusty widok, więc wypełnia dane miejsce, ale nigdy go
+        // nie rozpycha (`scaledToFill` w ZStacku powiększał cały układ i przesuwał tekst).
+        WidgetBackdrop()
+            .overlay {
+                if let pick, let image = ImageStore.backdrop(for: pick, maxPixel: maxPixel)
+                    ?? ImageStore.poster(for: pick, maxPixel: maxPixel) {
+                    Image(decorative: image, scale: 1)
+                        .resizable()
+                        .widgetAccentedRenderingMode(.accentedDesaturated)
+                        .scaledToFill()
+                        .blur(radius: blur)
+                        .id(pick.id)
+                        .transition(.asymmetric(
+                            insertion: .opacity.combined(with: .scale(scale: 1.08)),
+                            removal: .opacity
+                        ))
+                }
             }
-        }
-        .animation(.easeOut(duration: 0.9), value: pick?.id)
-        .clipped()
+            .animation(.easeOut(duration: 0.9), value: pick?.id)
+            .clipped()
     }
 }
 
@@ -182,8 +184,8 @@ struct ServiceChip: View {
 
     var body: some View {
         let label = HStack(spacing: 5) {
-            if let service = pick.service, service.logo(maxPixel: height * 3) != nil {
-                ServiceDot(service: service, size: height * 0.68)
+            if let service = pick.service {
+                ServiceMark(service: service, size: height * 0.72)
             } else {
                 Image(systemName: pick.service == nil ? (pick.resolvedScenario == .toBuy ? "bag.fill" : "magnifyingglass") : "play.fill")
                     .font(.system(size: height * 0.38, weight: .bold))

@@ -74,7 +74,9 @@ struct MenuBarPanel: View {
                     posterPixels: 300,
                     showsDetailsOnHover: true,
                     menu: menu(slot:pick:),
-                    flips: panel.flips
+                    flips: panel.flips,
+                    // 340 − 2 × 16 marginesu − 2 × 8 odstępu, na trzy kolumny.
+                    posterWidth: 97
                 )
             }
 
