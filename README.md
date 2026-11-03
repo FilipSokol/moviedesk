@@ -110,6 +110,24 @@ ponownie tylko po zmianach w kodzie (`./Scripts/install.sh --pull` pobierze je i
 Uwaga: przy darmowym koncie Apple ID podpis deweloperski może po jakimś czasie wygasnąć —
 wtedy wystarczy jeszcze raz uruchomić skrypt.
 
+### Widzę stare widgety albo nie widzę nowych
+
+macOS pamięta widget z każdej kopii aplikacji, którą kiedykolwiek uruchomiłeś (buildy z Xcode,
+starszy identyfikator aplikacji), i potrafi pokazywać w galerii starą wersję. Uruchom:
+
+```bash
+./Scripts/reset-widgets.sh
+```
+
+Skrypt zostawia tylko `/Applications/MovieDesk.app`, usuwa kopie z buildów Xcode i przeładowuje
+usługi widgetów (`install.sh` robi to automatycznie). Potem usuń stare widgety z pulpitu
+i dodaj nowe. Widgety na pulpicie reagują na kliknięcia, gdy pulpit jest na wierzchu —
+jeśli są przygaszone przez okna, kliknij najpierw w pusty pulpit.
+
+## Ikona
+
+Źródło ikony to `Design/AppIcon.svg`; gotowe rozmiary są w `App/Assets.xcassets/AppIcon.appiconset`.
+
 ## Uruchomienie (z Xcode, do pracy nad kodem)
 
 1. Utwórz lokalną konfigurację i wpisz w niej swój Team ID:

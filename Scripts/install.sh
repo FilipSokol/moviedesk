@@ -41,6 +41,10 @@ pkill -x MovieDesk 2>/dev/null || true
 sleep 1
 rm -rf /Applications/MovieDesk.app
 cp -R "$APP" /Applications/
+
+echo "→ Odświeżam widgety…"
+Scripts/reset-widgets.sh
+
 open /Applications/MovieDesk.app
 
 echo "✓ Gotowe. W ustawieniach MovieDesk włącz „Uruchamiaj przy logowaniu” (wystarczy raz)."
