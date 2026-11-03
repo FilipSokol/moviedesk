@@ -21,12 +21,17 @@ command -v xcodebuild >/dev/null || { echo "Brak Xcode — zainstaluj z App Stor
 echo "→ Generuję projekt…"
 xcodegen generate --quiet
 
-echo "→ Buduję (Release)… to chwilę potrwa"
+# Każda instalacja dostaje nowy numer builda — macOS trzyma w pamięci listę widgetów
+# i odświeża ją dopiero, gdy wersja rozszerzenia się zmieni.
+BUILD_NUMBER=$(date +%Y%m%d%H%M)
+
+echo "→ Buduję (Release, build $BUILD_NUMBER)… to chwilę potrwa"
 xcodebuild \
   -project MovieDesk.xcodeproj \
   -scheme MovieDesk \
   -configuration Release \
-  -destination 'generic/platform=macOS' \
+  -destination 'platform=macOS' \
+  CURRENT_PROJECT_VERSION="$BUILD_NUMBER" \
   -derivedDataPath build \
   -allowProvisioningUpdates \
   -quiet \

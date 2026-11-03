@@ -197,8 +197,8 @@ final class SyncController: ObservableObject {
             omdb: omdb.isEmpty ? nil : OMDbClient(apiKey: omdb),
             services: services,
             excludedIDs: Set(StateStore.load().dismissed.keys),
-            progress: { [weak self] text in
-                await MainActor.run { self?.status = text }
+            progress: { @MainActor [weak self] text in
+                self?.status = text
             }
         )
 

@@ -28,7 +28,8 @@ registrations | sed 's/^/  /'
 
 # Każda linia: "  <id>(<wersja>)<TAB><uuid><TAB><data><TAB><ścieżka>"
 registrations | while IFS= read -r line; do
-  id=$(echo "$line" | awk '{print $1}' | sed 's/^[+!=-]//; s/(.*//')
+  # Linia może zaczynać się od „+”, „-” itp. — identyfikator to pierwsze „coś(wersja)”.
+  id=$(echo "$line" | grep -oE '[A-Za-z0-9._-]+\([^)]*\)' | head -1 | sed 's/(.*//')
   path=$(echo "$line" | awk -F'\t' '{print $NF}' | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')
   if [[ "$id" != "$current" || "$path" != "$APPEX" ]]; then
     echo "→ Usuwam starą wersję: $id  ($path)"

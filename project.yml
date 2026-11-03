@@ -14,7 +14,7 @@ configFiles:
 settings:
   base:
     SWIFT_VERSION: "5.0"
-    MARKETING_VERSION: "0.2.0"
+    MARKETING_VERSION: "0.3.0"
     CURRENT_PROJECT_VERSION: "1"
     CODE_SIGN_STYLE: Automatic
     ENABLE_HARDENED_RUNTIME: YES
@@ -27,6 +27,7 @@ targets:
     preBuildScripts:
       - name: Sprawdź Team ID
         basedOnDependencyAnalysis: false
+        showEnvVars: false
         script: |
           if [ -z "$DEVELOPMENT_TEAM" ]; then
             echo "error: Brak Team ID. Skopiuj Config/Local.xcconfig.example jako Config/Local.xcconfig i wpisz DEVELOPMENT_TEAM."
@@ -44,6 +45,8 @@ targets:
       properties:
         CFBundleDisplayName: MovieDesk
         CFBundleDevelopmentRegion: pl
+        CFBundleShortVersionString: "$(MARKETING_VERSION)"
+        CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
         LSUIElement: true
         LSApplicationCategoryType: public.app-category.entertainment
         MDAppGroupID: "$(APP_GROUP_ID)"
@@ -77,6 +80,8 @@ targets:
       properties:
         CFBundleDisplayName: MovieDesk
         CFBundleDevelopmentRegion: pl
+        CFBundleShortVersionString: "$(MARKETING_VERSION)"
+        CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
         MDAppGroupID: "$(APP_GROUP_ID)"
         NSExtension:
           NSExtensionPointIdentifier: com.apple.widgetkit-extension
